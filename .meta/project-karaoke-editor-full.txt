@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-26 20:32:52 UTC
+Сгенерировано: 2026-06-26 20:35:12 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1077,6 +1077,7 @@ cache(){
     sessionUpload:g('session-upload'),
     btnExportActive:g('btn-export-active'),btnExportLine:g('btn-export-line'),
     btnExportWords:g('btn-export-words'),btnExportAll:g('btn-export-all'),btnExportZip:g('btn-export-zip'),
+    btnExportSrt:g('btn-export-srt'),btnExportLrc:g('btn-export-lrc'),
     btnSaveSession:g('btn-save-session'),btnLoadSession:g('btn-load-session'),
     btnValidate:g('btn-validate'),btnRestoreSession:g('btn-restore-session'),
     btnRecent:g('btn-recent'),btnHotkeys:g('btn-hotkeys'),btnHelp:g('btn-help'),
@@ -1270,6 +1271,8 @@ bind(){
   this.ui.btnExportWords.onclick=()=>this.exportTrack(this.trackByType('words'));
   this.ui.btnExportAll.onclick=()=>this.exportAll();
   this.ui.btnExportZip.onclick=()=>this.exportZip();
+  this.ui.btnExportSrt.onclick=()=>this.exportSubtitle('srt');
+  this.ui.btnExportLrc.onclick=()=>this.exportSubtitle('lrc');
   this.ui.btnSaveSession.onclick=()=>this.saveSessionToFile();
   this.ui.btnLoadSession.onclick=()=>this.ui.sessionUpload.click();
   this.ui.sessionUpload.onchange=e=>this.loadSessionFromFile(e.target.files[0]);
@@ -1611,13 +1614,8 @@ async loadAudio(file){
 async loadTrackJSON(file,forceType){
   if(!file)return;
   try{
-    const txt=await file.text(),raw=JSON.parse(txt);
-    const track=this.normalizeTrack(raw,forceType,this.base(file.name));
-    const idx=this.project.tracks.findIndex(t=>t.type===track.type);
-    if(idx>=0)this.project.tracks[idx]=track;else this.project.tracks.push(track);
-    if(!this.project.activeTrackId||!this.activeTrack()||this.activeTrack().locked)
-      this.project.activeTrackId=track.id;
-    this.pushHistory('Load Track');this.markDirty(false);this.fullRender();
+    const raw=JSON.parse(await file.text());
+    this.addImportedTrack(this.normalizeTrack(raw,forceType,this.base(file.name)));
   }catch(e){console.error(e);alert('Невалидный JSON: '+e.message)}
 },
 
@@ -1683,6 +1681,9 @@ parseLRC(txt){
 /** Build a line-track from parsed entries. Fills missing timings. */
 buildLineTrackFromParsed(parsed,name,opts={}){
   const hasTime=parsed.some(p=>typeof p.start==='number');
+  if(!hasTime&&!this.duration&&!opts._silent){
+    console.warn('TXT импорт без аудио — тайминги ориентировочные');
+  }
   const total=this.duration||Math.max(10,parsed.length*2);
   const t={id:'T_'+this.uid(),type:'line',name:name||'imported',visible:true,solo:false,locked:false,muted:false,items:[]};
   if(hasTime){
@@ -3330,6 +3331,35 @@ serializeTrack(tr){
 },
 
 exportAll(){this.project.tracks.forEach(tr=>this.doExportTrack(tr))},
+
+/* Экспорт активной (или line) дорожки в SRT/LRC */
+exportSubtitle(fmt){
+  const tr=this.activeTrack()||this.trackByType('line');
+  if(!tr){alert('Нет дорожки для экспорта');return}
+  const lines=this.normalizeTrackForExport(tr).items
+    .filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start);
+  if(!lines.length){alert('Нет строк');return}
+  const text=fmt==='srt'?this.toSRT(lines):this.toLRC(lines);
+  const ext=fmt==='srt'?'.srt':'.lrc';
+  this.downloadBlob(new Blob([text],{type:'text/plain;charset=utf-8'}),tr.name+ext);
+},
+
+toSRT(lines){
+  const tc=t=>{
+    const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=Math.floor(t%60),ms=Math.round((t-Math.floor(t))*1000);
+    const p=(n,l=2)=>String(n).padStart(l,'0');
+    return `${p(h)}:${p(m)}:${p(s)},${p(ms,3)}`;
+  };
+  return lines.map((l,i)=>`${i+1}\n${tc(l.start)} --> ${tc(l.end)}\n${l.text}\n`).join('\n');
+},
+
+toLRC(lines){
+  const tc=t=>{
+    const m=Math.floor(t/60),s=(t%60).toFixed(2);
+    return `[${String(m).padStart(2,'0')}:${(+s<10?'0':'')+s}]`;
+  };
+  return lines.map(l=>`${tc(l.start)}${l.text}`).join('\n');
+},
 
 exportZip(){
   try{
