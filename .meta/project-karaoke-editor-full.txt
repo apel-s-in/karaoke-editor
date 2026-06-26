@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-26 20:16:53 UTC
+Сгенерировано: 2026-06-26 20:21:30 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1144,6 +1144,7 @@ cache(){
     inspectorBody:g('inspector-body'),previewBody:g('preview-body'),
     previewPanel:g('preview-panel'),
     toolbarCompactBtn:g('toolbar-compact-btn'),
+    toolbarLockBtn:g('toolbar-lock-btn'),
     toolbar:g('toolbar'),toolbarRows:g('toolbar-rows')
   };
 },
@@ -1396,8 +1397,8 @@ initFlexLayout(){
   this._bindSidebarCollapse();
   this._bindPanelCollapse();
   this._bindToolbarCompact();
-  this._bindToolbarGroupDrag();
   this._restoreLayoutPrefs();
+  this._bindToolbarGroupDrag();
 },
 
 _bindTimelineResizer(){
@@ -1456,6 +1457,22 @@ _bindToolbarGroupDrag(){
   // Drag-and-drop reordering of .grp blocks within .row
   const rows=document.querySelectorAll('.row');
   rows.forEach(row=>this._setupRowDragDrop(row));
+  this._applyToolbarLock(this._toolbarLocked!==false); // по умолчанию locked
+  this.ui.toolbarLockBtn.addEventListener('click',()=>{
+    this._applyToolbarLock(!this._toolbarLocked);
+    this._saveLayoutPref('toolbarLocked',this._toolbarLocked);
+  });
+},
+
+_applyToolbarLock(locked){
+  this._toolbarLocked=locked;
+  this.ui.toolbar.classList.toggle('tb-locked',locked);
+  this.ui.toolbarLockBtn.textContent=locked?'🔒':'🔓';
+  this.ui.toolbarLockBtn.classList.toggle('unlocked',!locked);
+  this.ui.toolbarLockBtn.title=locked?'Разблокировать перемещение кнопок':'Заблокировать перемещение кнопок';
+  document.querySelectorAll('.grp[data-grp]').forEach(g=>{
+    if(locked)g.removeAttribute('draggable');else g.setAttribute('draggable','true');
+  });
 },
 
 _setupRowDragDrop(row){
@@ -1546,6 +1563,8 @@ _restoreLayoutPrefs(){
     }
     // Toolbar group order
     if(g('toolbarOrder'))this._restoreToolbarOrder(g('toolbarOrder'));
+    // Toolbar lock (default true)
+    this._toolbarLocked=g('toolbarLocked')!==false;
     // Sidebar collapsed
     if(g('sidebarCollapsed')){
       this.ui.sidebar.classList.add('collapsed-sidebar');
@@ -2192,10 +2211,10 @@ rulerTime(t){const m=Math.floor(t/60),s=(t%60).toFixed(1);return m+':'+(+s<10?'0
 /* ─── headers ────────────────────────────────────────────────────── */
 renderHeaders(){
   const c=this.ui.trackHeaders;c.innerHTML='';
-  const wh=Math.round(80*this.verticalZoom),row=Math.round(56*this.verticalZoom);
+  const wh=Math.round(80*this.verticalZoom);
   const len=this.project.tracks.length;
   this.project.tracks.forEach((tr,i)=>{
-    const top=wh+30+i*row;
+    const top=wh+30+this.trackTopFor(tr);
     const div=document.createElement('div');
     div.className='track-head'+(tr.id===this.project.activeTrackId?' active':'')+(this.collapsed[tr.id]?' collapsed':'');
     div.style.top=top+'px';div.dataset.tid=tr.id;
@@ -2212,12 +2231,14 @@ renderHeaders(){
     const bL=mkBtn('L',tr.locked?'locked':'','Lock',()=>this.toggleTrackProp(tr.id,'locked'));
     const bE=mkBtn('E',tr.id===this.project.activeTrackId?'on':'','Active',()=>this.setActiveTrack(tr.id));
     const bC=mkBtn(this.collapsed[tr.id]?'▶':'▼','col-btn','Collapse',()=>this.toggleCollapse(tr.id));
+    const bHm=mkBtn('H−','','Тоньше дорожку',()=>this.changeTrackHeight(tr.id,-.2));
+    const bHp=mkBtn('H+','','Толще дорожку',()=>this.changeTrackHeight(tr.id,.2));
     const bUp=mkBtn('▲','',`Переместить вверх`,()=>this.reorderTrack(i,-1));
     const bDn=mkBtn('▼','',`Переместить вниз`,()=>this.reorderTrack(i,1));
     const bDel=mkBtn('✕','','Удалить дорожку',()=>this.deleteTrackById(tr.id));
     if(i===0)bUp.disabled=true;
     if(i===len-1)bDn.disabled=true;
-    div.append(dot,nm,tp,bV,bMu,bS,bL,bE,bC,bUp,bDn,bDel);
+    div.append(dot,nm,tp,bV,bMu,bS,bL,bE,bC,bHm,bHp,bUp,bDn,bDel);
     c.appendChild(div);
   });
 },
@@ -2235,6 +2256,21 @@ setActiveTrack(id){
 },
 
 toggleCollapse(id){this.collapsed[id]=!this.collapsed[id];this.renderHeaders();this.renderTimeline()},
+
+changeTrackHeight(id,delta){
+  const tr=this.trackById(id);if(!tr)return;
+  tr.rowScale=Math.max(.6,Math.min(3,(tr.rowScale||1)+delta));
+  this.markDirty();this.applyVerticalZoom();this.renderHeaders();this.renderTimeline();this.renderRuler();
+},
+
+rowH(tr){return Math.round(56*this.verticalZoom*(tr.rowScale||1))},
+itemH(tr){return Math.round(34*this.verticalZoom*(tr.rowScale||1))},
+trackTopFor(tr){
+  const wh=Math.round(80*this.verticalZoom);
+  let top=0;
+  for(const t of this.project.tracks){if(t.id===tr.id)break;top+=this.rowH(t)}
+  return top;
+},
 
 openRenameModal(id){
   const tr=this.trackById(id);if(!tr)return;
@@ -2291,12 +2327,10 @@ renderTimeline(){
   const c=this.ui.tracksContainer;c.innerHTML='';
   if(!this.project.tracks.length||!this.duration)return;
   const w=Math.ceil(this.duration*this.zoom);
-  const row=Math.round(56*this.verticalZoom),lh=Math.round(34*this.verticalZoom);
   const layerM=this.ui.layerMode.value;
   const sc=this.ui.timelineContainer;
   const vpLeft=sc.scrollLeft/this.zoom,vpRight=(sc.scrollLeft+sc.clientWidth)/this.zoom;
   const vpMargin=2;
-  // Collect ripple-affected & roll-pair ids for visual feedback
   const rippleSet=this._rippleAffected||new Set();
   const rollIds=new Set();
   if(this.drag.active&&this.drag.rollPair){
@@ -2304,9 +2338,9 @@ renderTimeline(){
   }
 
   this.getVisibleTracks().forEach(tr=>{
-    const ti=this.project.tracks.indexOf(tr);
+    const row=this.rowH(tr),lh=this.itemH(tr);
     const color=tr.color||(tr.type==='line'?'#1e88e5':'#43a047');
-    const trackTop=ti*row;
+    const trackTop=this.trackTopFor(tr);
     const trkBg=document.createElement('div');
     trkBg.style.cssText=`position:absolute;left:0;top:${trackTop}px;height:${row-4}px;width:${w}px;background:rgba(255,255,255,.018);border-bottom:1px solid rgba(255,255,255,.05);pointer-events:none`;
     c.appendChild(trkBg);
@@ -2314,7 +2348,6 @@ renderTimeline(){
     this.visibleItems(tr,layerM).forEach(it=>{
       if(it.end<vpLeft-vpMargin||it.start>vpRight+vpMargin)return;
       const el=this.createTrackItemElement(tr,it,trackTop,lh,color,isActive);
-      // Visual feedback classes
       if(rippleSet.has(it.id))el.classList.add('ripple-affected');
       if(rollIds.has(it.id))el.classList.add('roll-pair');
       if(this._dragClamped&&this.drag.active&&this.selected.ids.has(it.id))el.classList.add('drag-clamped');
