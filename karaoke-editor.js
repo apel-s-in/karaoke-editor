@@ -2482,6 +2482,7 @@ defaultKeymap(){
     'play_pause':{key:'Space',desc:'Play / Pause',ru:'Воспроизведение / Пауза'},
     'stop':{key:'Escape',desc:'Stop',ru:'Стоп'},
     'zoom_in':{key:'+',desc:'Zoom In',ru:'Увеличить масштаб'},
+    'zoom_in_eq':{key:'=',desc:'Zoom In (=)',ru:'Увеличить масштаб (=)'},
     'zoom_in_num':{key:'NumpadAdd',desc:'Zoom In (numpad)',ru:'Увеличить масштаб (нампад)'},
     'zoom_out':{key:'-',desc:'Zoom Out',ru:'Уменьшить масштаб'},
     'zoom_out_num':{key:'NumpadSubtract',desc:'Zoom Out (numpad)',ru:'Уменьшить масштаб (нампад)'},
@@ -2627,7 +2628,7 @@ matchHotkey(cmd,e){
 /* ─── hotkeys handler (command-map driven) ───────────────────────── */
 _hotkeyCommandMap:Object.freeze({
   play_pause:'playPause',stop:'stop',
-    zoom_in:'zoomIn',zoom_in_num:'zoomIn',zoom_out:'zoomOut',zoom_out_num:'zoomOut',
+    zoom_in:'zoomIn',zoom_in_eq:'zoomIn',zoom_in_num:'zoomIn',zoom_out:'zoomOut',zoom_out_num:'zoomOut',
     vzoom_in:'vzoomIn',vzoom_out:'vzoomOut',
     seek_left:'seekLeft',seek_right:'seekRight',
     seek_left_big:'seekLeftBig',seek_right_big:'seekRightBig',
