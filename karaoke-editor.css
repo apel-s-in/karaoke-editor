@@ -83,21 +83,22 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
 /* LOOP REGION */
 .loop-region{position:absolute;top:0;bottom:0;background:rgba(255,200,0,.07);border-left:2px solid rgba(255,200,0,.5);border-right:2px solid rgba(255,200,0,.5);z-index:55;pointer-events:none}
 
-/* TRACK HEADERS */
-.track-headers{position:absolute;top:0;left:0;z-index:50;pointer-events:auto}
-.track-head{position:absolute;left:4px;min-width:300px;background:rgba(12,14,18,.92);border:1px solid rgba(255,255,255,.14);border-radius:6px;padding:3px 6px;display:flex;align-items:center;gap:4px;font-size:11px;backdrop-filter:blur(2px);transform:translateY(-100%);margin-top:-2px;flex-wrap:wrap;max-width:520px}
-.track-head.active{box-shadow:0 0 0 1.5px var(--acc) inset}
+/* TRACK HEADERS — sticky узкая полоска между waveform и дорожкой, не зумируется, всегда в кадре */
+.track-headers{position:absolute;top:0;left:0;z-index:50;pointer-events:none}
+.track-head{position:absolute;left:0;height:24px;background:linear-gradient(180deg,#22262e,#1a1d23);border:1px solid var(--br2);border-radius:4px;padding:0 5px;display:flex;align-items:center;gap:3px;font-size:11px;white-space:nowrap;pointer-events:auto;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.track-head.active{box-shadow:0 0 0 1.5px var(--acc) inset,0 1px 3px rgba(0,0,0,.4)}
 .track-head.collapsed{opacity:.7}
-.track-head .nm{font-weight:700;min-width:50px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.track-head .nm{font-weight:700;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .track-head .nm:hover{color:var(--acc2)}
-.track-head .tp{opacity:.7;font-size:10px}
-.track-color-dot{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.3);flex:0 0 auto;cursor:pointer}
-.track-head button{font-size:10px;padding:2px 5px;border-radius:3px;border:1px solid #445;cursor:pointer;background:#252932;color:#ccc;min-width:22px}
+.track-head .tp{opacity:.6;font-size:9px}
+.track-color-dot{width:9px;height:9px;border-radius:50%;border:1px solid rgba(255,255,255,.3);flex:0 0 auto;cursor:pointer}
+.track-head button{font-size:10px;padding:1px 4px;border-radius:3px;border:1px solid #445;cursor:pointer;background:#252932;color:#ccc;min-width:18px;line-height:1.4}
 .track-head button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .track-head button.locked{background:#7b2d2d;border-color:#a44}
 .track-head button.sol{background:#7b5a00;border-color:#c8900a}
 .track-head button.col-btn{background:#252932;border-color:#445}
 .track-head button:disabled{opacity:.3;cursor:default;pointer-events:none}
+.track-head .sep-mini{width:1px;height:14px;background:var(--br2);margin:0 2px;flex-shrink:0}
 
 /* TRACKS CONTAINER */
 .tracks{position:absolute;top:120px;left:0;right:0;bottom:0;padding-bottom:90px;z-index:10}
