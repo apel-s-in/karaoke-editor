@@ -65,10 +65,9 @@ const EXCLUDE_RAW = [
 
 const PRIORITY = {
   critical: [
-    /^index\.html?$/i,
-    /^styles\.css$/i,
-    /^src\/app\.js$/i,
-    /^\.github\/workflows\/deploy\.ya?ml$/i,
+    /^karaoke-editor\.html?$/i,
+    /^karaoke-editor\.css$/i,
+    /^karaoke-editor\.js$/i,
     /^\.github\/workflows\/generate-context\.ya?ml$/i,
     /^generate-context\.js$/i,
     /^ai-rules\.txt$/i,
