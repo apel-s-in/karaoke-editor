@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-26 21:20:36 UTC
+Сгенерировано: 2026-06-26 21:24:23 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1386,6 +1386,7 @@ bind(){
 
   this._scrollRenderTimer=null;
   this.ui.timelineContainer.addEventListener('scroll',()=>{
+    this._syncHeadersScroll(); // мгновенно — прилипание меню к левому краю
     clearTimeout(this._scrollRenderTimer);
     this._scrollRenderTimer=setTimeout(()=>this.renderTimeline(),60);
   });
@@ -2223,7 +2224,9 @@ renderHeaders(){
   const c=this.ui.trackHeaders;c.innerHTML='';
   const wh=Math.round(80*this.verticalZoom);
   const len=this.project.tracks.length;
+  const HEAD_H=24; // фиксированная высота полоски (не зумируется)
   this.project.tracks.forEach((tr,i)=>{
+    // Полоска размещается СВЕРХУ строки дорожки (между waveform и текстом)
     const top=wh+30+this.trackTopFor(tr);
     const div=document.createElement('div');
     div.className='track-head'+(tr.id===this.project.activeTrackId?' active':'')+(this.collapsed[tr.id]?' collapsed':'');
@@ -2235,6 +2238,7 @@ renderHeaders(){
     nm.ondblclick=()=>this.openRenameModal(tr.id);
     const tp=document.createElement('span');tp.className='tp';tp.textContent=tr.type.toUpperCase();
     const mkBtn=(lbl,cls,title,cb)=>{const b=document.createElement('button');b.textContent=lbl;b.className=cls;b.title=title;b.onclick=cb;return b};
+    const sep=()=>{const s=document.createElement('span');s.className='sep-mini';return s};
     const bV=mkBtn('V',tr.visible?'on':'','Показать/скрыть',()=>this.toggleTrackProp(tr.id,'visible'));
     const bMu=mkBtn('M',tr.muted?'locked':'','Mute',()=>this.toggleTrackProp(tr.id,'muted'));
     const bS=mkBtn('S',tr.solo?'sol':'','Solo',()=>this.toggleTrackProp(tr.id,'solo'));
@@ -2243,14 +2247,21 @@ renderHeaders(){
     const bC=mkBtn(this.collapsed[tr.id]?'▶':'▼','col-btn','Collapse',()=>this.toggleCollapse(tr.id));
     const bHm=mkBtn('H−','','Тоньше дорожку',()=>this.changeTrackHeight(tr.id,-.2));
     const bHp=mkBtn('H+','','Толще дорожку',()=>this.changeTrackHeight(tr.id,.2));
-    const bUp=mkBtn('▲','',`Переместить вверх`,()=>this.reorderTrack(i,-1));
-    const bDn=mkBtn('▼','',`Переместить вниз`,()=>this.reorderTrack(i,1));
+    const bUp=mkBtn('▲','','Вверх',()=>this.reorderTrack(i,-1));
+    const bDn=mkBtn('▼','','Вниз',()=>this.reorderTrack(i,1));
     const bDel=mkBtn('✕','','Удалить дорожку',()=>this.deleteTrackById(tr.id));
     if(i===0)bUp.disabled=true;
     if(i===len-1)bDn.disabled=true;
-    div.append(dot,nm,tp,bV,bMu,bS,bL,bE,bC,bHm,bHp,bUp,bDn,bDel);
+    div.append(dot,nm,tp,sep(),bV,bMu,bS,bL,bE,sep(),bC,bHm,bHp,sep(),bUp,bDn,bDel);
     c.appendChild(div);
   });
+  this._syncHeadersScroll();
+},
+
+/** Прилепляем полоски меню к левому краю при горизонтальном скролле */
+_syncHeadersScroll(){
+  const sl=this.ui.timelineContainer.scrollLeft;
+  this.ui.trackHeaders.querySelectorAll('.track-head').forEach(h=>{h.style.left=(sl+4)+'px'});
 },
 
 toggleTrackProp(id,prop){
@@ -2273,10 +2284,10 @@ changeTrackHeight(id,delta){
   this.markDirty();this.applyVerticalZoom();this.renderHeaders();this.renderTimeline();this.renderRuler();
 },
 
-rowH(tr){return Math.round(56*this.verticalZoom*(tr.rowScale||1))},
-itemH(tr){return Math.round(34*this.verticalZoom*(tr.rowScale||1))},
+// Высота строки = высота текста + 26px (полоска меню сверху) + 6px зазор
+itemH(tr){return Math.round(30*this.verticalZoom*(tr.rowScale||1))},
+rowH(tr){return this.itemH(tr)+32},
 trackTopFor(tr){
-  const wh=Math.round(80*this.verticalZoom);
   let top=0;
   for(const t of this.project.tracks){if(t.id===tr.id)break;top+=this.rowH(t)}
   return top;
@@ -2351,8 +2362,10 @@ renderTimeline(){
     const row=this.rowH(tr),lh=this.itemH(tr);
     const color=tr.color||(tr.type==='line'?'#1e88e5':'#43a047');
     const trackTop=this.trackTopFor(tr);
+    // Серая зона = только высота текста (lh) + отступ под полоску меню (26px сверху)
+    const bgTop=trackTop+26,bgH=lh+4;
     const trkBg=document.createElement('div');
-    trkBg.style.cssText=`position:absolute;left:0;top:${trackTop}px;height:${row-4}px;width:${w}px;background:rgba(255,255,255,.018);border-bottom:1px solid rgba(255,255,255,.05);pointer-events:none`;
+    trkBg.style.cssText=`position:absolute;left:0;top:${bgTop}px;height:${bgH}px;width:${w}px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);border-radius:3px;pointer-events:none`;
     c.appendChild(trkBg);
     const isActive=tr.id===this.project.activeTrackId&&!tr.locked;
     this.visibleItems(tr,layerM).forEach(it=>{
@@ -2376,7 +2389,9 @@ createTrackItemElement(tr,it,trackTop,lh,color,isActive){
   if(isActive)cls+=' editable-active';
   cls+=this.conflictClass(tr,it);
   div.className=cls;
-  div.style.cssText=`left:${px}px;width:${Math.max(4,pw)}px;top:${trackTop+(it.kind==='line'?0:lh*.55)}px;height:${lh*(it.kind==='line'?.45:.42)}px;font-size:${Math.round(11*this.verticalZoom)}px`;
+  const itTop=trackTop+28+(it.kind==='word'?lh*.5:0);
+  const itH=it.kind==='line'?lh:lh*.5;
+  div.style.cssText=`left:${px}px;width:${Math.max(4,pw)}px;top:${itTop}px;height:${itH}px;font-size:${Math.round(11*this.verticalZoom)}px`;
   div.style.borderColor=color;div.style.background=this.itemBg(it,tr,color);
   div.title=it.text;div.dataset.id=it.id;div.dataset.tid=tr.id;
 
@@ -2696,7 +2711,7 @@ finalizeMarquee(){
   const sl=parseInt(sb.style.left)||0,st=parseInt(sb.style.top)||0;
   const sr=sl+(parseInt(sb.style.width)||0),sb2=st+(parseInt(sb.style.height)||0);
   if(sr-sl<4&&sb2-st<4){this.afterEdit();return}
-  const base=60; // tracksContainer top offset internal (wh+60 в applyVerticalZoom, но top уже в контейнере)
+  const wh=Math.round(80*this.verticalZoom),base=wh+60;
   const visTracks=this.getVisibleTracks();
   let hitTid=null;
   visTracks.forEach(tr=>{
@@ -2705,7 +2720,7 @@ finalizeMarquee(){
   });
   const targetId=hitTid||this.project.activeTrackId;
   const tr=this.trackById(targetId);if(!tr)return;
-  const tTop=this.trackTopFor(tr)+base,lh=this.rowH(tr);
+  const tTop=this.trackTopFor(tr)+base+28,lh=this.itemH(tr);
   tr.items.forEach(it=>{
     const ix=it.start*this.zoom,iw=Math.max(4,(it.end-it.start)*this.zoom);
     if(ix<sr&&ix+iw>sl&&tTop<sb2&&tTop+lh>st){
