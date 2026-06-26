@@ -31,7 +31,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-26 14:50:22 UTC
+Сгенерировано: 2026-06-26 15:12:40 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -161,10 +161,9 @@ const EXCLUDE_RAW = [
 
 const PRIORITY = {
   critical: [
-    /^index\.html?$/i,
-    /^styles\.css$/i,
-    /^src\/app\.js$/i,
-    /^\.github\/workflows\/deploy\.ya?ml$/i,
+    /^karaoke-editor\.html?$/i,
+    /^karaoke-editor\.css$/i,
+    /^karaoke-editor\.js$/i,
     /^\.github\/workflows\/generate-context\.ya?ml$/i,
     /^generate-context\.js$/i,
     /^ai-rules\.txt$/i,
