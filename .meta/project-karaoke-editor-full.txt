@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-26 20:32:10 UTC
+Сгенерировано: 2026-06-26 20:32:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -654,6 +654,8 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
         <button class="btn" id="btn-export-words">Words</button>
         <button class="btn" id="btn-export-all">All</button>
         <button class="btn" id="btn-export-zip">ZIP</button>
+        <button class="btn" id="btn-export-srt">SRT</button>
+        <button class="btn" id="btn-export-lrc">LRC</button>
       </div>
       <span class="sep"></span>
       <div class="grp" id="grp-session" draggable="true" data-grp="session" title="Drag to reorder">
