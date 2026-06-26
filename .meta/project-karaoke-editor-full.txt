@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-26 20:16:11 UTC
+Сгенерировано: 2026-06-26 20:16:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -422,6 +422,10 @@ body{font:13px/1.35 "Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(
 .toolbar.compact .btn{padding:2px 6px;font-size:11px}
 .toolbar-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:10;opacity:.5;cursor:pointer;font-size:10px;background:none;border:none;color:var(--tx)}
 .toolbar-toggle:hover{opacity:1}
+.toolbar-lock-btn{position:absolute;right:30px;top:50%;transform:translateY(-50%);z-index:11;cursor:pointer;font-size:16px;background:#2a2d35;border:1px solid var(--br2);border-radius:5px;padding:1px 5px;line-height:1.2}
+.toolbar-lock-btn.unlocked{background:#7b5a00;border-color:#f0b400;color:#ffd54f;box-shadow:0 0 8px rgba(240,180,0,.5)}
+.toolbar.tb-locked .grp[draggable=true]{cursor:default}
+.toolbar.tb-locked .grp-handle{display:none}
 
 .sep{width:1px;height:16px;background:var(--br2);margin:0 2px;flex-shrink:0}
 
