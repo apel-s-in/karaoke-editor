@@ -113,6 +113,10 @@ cache(){
     btnExportPreviewCopy:g('btn-export-preview-copy'),btnExportPreviewDownload:g('btn-export-preview-download'),
     btnExportPreviewClose:g('btn-export-preview-close'),
     ctxDeleteTrack:g('ctx-delete-track'),
+    importUpload:g('import-upload'),btnPasteText:g('btn-paste-text'),
+    pasteModal:g('paste-modal'),pasteMode:g('paste-mode'),pasteTarget:g('paste-target'),
+    pasteTxtSpread:g('paste-txt-spread'),pasteTxtDur:g('paste-txt-dur'),
+    pasteTextArea:g('paste-text-area'),btnPasteImport:g('btn-paste-import'),btnPasteCancel:g('btn-paste-cancel'),
     loader:g('loader'),audioPlayer:g('audio-player'),
     workspace:g('workspace'),workspaceMain:g('workspace-main'),
     timelineResizer:g('timeline-resizer'),
@@ -234,6 +238,10 @@ runCommand(name){
 
 bind(){
   this.ui.audioUpload.onchange=e=>this.loadAudio(e.target.files[0]);
+  this.ui.importUpload.onchange=e=>this.importAnyFile(e.target.files[0]);
+  this.ui.btnPasteText.onclick=()=>this.openPasteModal();
+  this.ui.btnPasteImport.onclick=()=>this.applyPasteImport();
+  this.ui.btnPasteCancel.onclick=()=>this.ui.pasteModal.classList.add('hidden');
   this.ui.lineUpload.onchange=e=>this.loadTrackJSON(e.target.files[0],'line');
   this.ui.wordsUpload.onchange=e=>this.loadTrackJSON(e.target.files[0],'words');
   this.ui.btnExportActive.onclick=()=>this.runCommand('exportActive');
@@ -315,7 +323,7 @@ bind(){
   this.ui.scrollArea.addEventListener('contextmenu',e=>this.showContextMenu(e));
   document.addEventListener('click',e=>{
     if(!e.target.closest('#context-menu'))this.ui.contextMenu.classList.add('hidden');
-    ['hotkeysModal','validationModal','helpModal','renameModal','recentModal','loopModal','exportPreviewModal'].forEach(m=>{
+    ['hotkeysModal','validationModal','helpModal','renameModal','recentModal','loopModal','exportPreviewModal','pasteModal'].forEach(m=>{
       if(e.target===this.ui[m])this.ui[m].classList.add('hidden');
     });
   });
@@ -337,9 +345,10 @@ bind(){
   dropZone.addEventListener('drop',e=>{
     const files=e.dataTransfer?.files;if(!files||!files.length)return;
     for(const f of files){
+      const n=f.name.toLowerCase();
       if(f.type.startsWith('audio/')){this.loadAudio(f);break}
-      if(f.name.endsWith('.json')){this.loadTrackJSON(f,f.name.toLowerCase().includes('word')?'words':'line');break}
-      if(f.name.endsWith('.kep')){this.loadSessionFromFile(f);break}
+      if(n.endsWith('.kep')){this.loadSessionFromFile(f);break}
+      if(n.endsWith('.srt')||n.endsWith('.lrc')||n.endsWith('.txt')||n.endsWith('.json')){this.importAnyFile(f);break}
     }
   });
 
@@ -571,6 +580,124 @@ async loadTrackJSON(file,forceType){
       this.project.activeTrackId=track.id;
     this.pushHistory('Load Track');this.markDirty(false);this.fullRender();
   }catch(e){console.error(e);alert('Невалидный JSON: '+e.message)}
+},
+
+/* ─── universal import (SRT / LRC / TXT / JSON) ──────────────────── */
+async importAnyFile(file){
+  if(!file)return;
+  try{
+    const txt=await file.text(),name=this.base(file.name),ext=(file.name.split('.').pop()||'').toLowerCase();
+    if(ext==='json'){
+      const raw=JSON.parse(txt),type=Array.isArray(raw)&&raw[0]&&'words'in raw[0]?'words':'line';
+      return this.addImportedTrack(this.normalizeTrack(raw,type,name));
+    }
+    const fmt=ext==='srt'?'srt':ext==='lrc'?'lrc':'txt';
+    const lines=this.parseTimedText(txt,fmt);
+    if(!lines.length){alert('Не удалось распознать строки в файле');return}
+    this.addImportedTrack(this.buildLineTrackFromParsed(lines,name));
+  }catch(e){console.error(e);alert('Ошибка импорта: '+e.message)}
+},
+
+addImportedTrack(track){
+  const idx=this.project.tracks.findIndex(t=>t.type===track.type);
+  if(idx>=0)this.project.tracks[idx]=track;else this.project.tracks.push(track);
+  if(!this.project.activeTrackId||!this.activeTrack()||this.activeTrack().locked)
+    this.project.activeTrackId=track.id;
+  this.pushHistory('Import Track');this.markDirty();this.fullRender();
+},
+
+/** Parse SRT/LRC into [{start,end?,text}] with timecodes */
+parseTimedText(txt,fmt){
+  if(fmt==='srt')return this.parseSRT(txt);
+  if(fmt==='lrc')return this.parseLRC(txt);
+  return txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(text=>({text}));
+},
+
+parseSRT(txt){
+  const out=[],blocks=txt.replace(/\r/g,'').split(/\n{2,}/);
+  const tc=s=>{const m=s.match(/(\d+):(\d+):(\d+)[,.](\d+)/);return m?(+m[1])*3600+(+m[2])*60+(+m[3])+(+m[4])/1000:null};
+  blocks.forEach(b=>{
+    const rows=b.split('\n').filter(Boolean);if(!rows.length)return;
+    let i=0;if(/^\d+$/.test(rows[0].trim()))i=1;
+    const tl=rows[i]||'';const m=tl.match(/(.+?)\s*-->\s*(.+)/);if(!m)return;
+    const start=tc(m[1]),end=tc(m[2]);
+    const text=rows.slice(i+1).join(' ').trim();
+    if(start!==null&&text)out.push({start,end:end??null,text});
+  });
+  return out.sort((a,b)=>a.start-b.start);
+},
+
+parseLRC(txt){
+  const out=[];
+  txt.split(/\r?\n/).forEach(line=>{
+    const tags=[...line.matchAll(/\[(\d+):(\d+)(?:[.:](\d+))?\]/g)];
+    const text=line.replace(/\[[^\]]*\]/g,'').trim();
+    if(!tags.length||!text)return;
+    tags.forEach(t=>{
+      const start=(+t[1])*60+(+t[2])+(t[3]?+('0.'+t[3]):0);
+      out.push({start,end:null,text});
+    });
+  });
+  return out.sort((a,b)=>a.start-b.start);
+},
+
+/** Build a line-track from parsed entries. Fills missing timings. */
+buildLineTrackFromParsed(parsed,name,opts={}){
+  const hasTime=parsed.some(p=>typeof p.start==='number');
+  const total=this.duration||Math.max(10,parsed.length*2);
+  const t={id:'T_'+this.uid(),type:'line',name:name||'imported',visible:true,solo:false,locked:false,muted:false,items:[]};
+  if(hasTime){
+    parsed.forEach((p,i)=>{
+      const s=this.num(p.start,0);
+      const e=p.end!=null?this.num(p.end,s+2):(parsed[i+1]?this.num(parsed[i+1].start,s+2)-.05:s+2);
+      t.items.push({id:'L_'+this.uid(),kind:'line',start:s,end:Math.max(s+.15,e),text:p.text});
+    });
+  }else{
+    const spread=opts.spread||'even',per=this.num(opts.dur,2);
+    parsed.forEach((p,i)=>{
+      const step=spread==='fixed'?per:total/parsed.length;
+      const s=i*step;
+      t.items.push({id:'L_'+this.uid(),kind:'line',start:s,end:s+Math.max(.5,step-.1),text:p.text});
+    });
+  }
+  this.sortTrack(t);return t;
+},
+
+/* ─── paste-text modal ───────────────────────────────────────────── */
+openPasteModal(){
+  this.ui.pasteTextArea.value='';
+  this.ui.pasteModal.classList.remove('hidden');
+  setTimeout(()=>this.ui.pasteTextArea.focus(),80);
+},
+
+applyPasteImport(){
+  const raw=this.ui.pasteTextArea.value.trim();
+  if(!raw){alert('Пусто');return}
+  let mode=this.ui.pasteMode.value;
+  if(mode==='auto'){
+    mode=/-->/.test(raw)?'srt':/\[\d+:\d+/.test(raw)?'lrc':'txt';
+  }
+  const target=this.ui.pasteTarget.value;
+  const parsed=this.parseTimedText(raw,mode);
+  if(!parsed.length){alert('Не удалось распознать строки');return}
+  const lineTrack=this.buildLineTrackFromParsed(parsed,'pasted',
+    {spread:this.ui.pasteTxtSpread.value,dur:this.ui.pasteTxtDur.value});
+  if(target==='words'){
+    // конвертируем line→words: каждая строка = line + слова из её текста
+    lineTrack.type='words';
+    const extra=[];
+    lineTrack.items.forEach(line=>{
+      line.lineId=line.id;
+      const words=line.text.split(/\s+/).filter(Boolean);
+      const dur=(line.end-line.start)/Math.max(1,words.length);
+      words.forEach((w,i)=>extra.push({id:'W_'+this.uid(),kind:'word',lineId:line.id,
+        start:line.start+i*dur,end:line.start+(i+1)*dur-.005,text:w,chars:[]}));
+    });
+    lineTrack.items.push(...extra);
+    this.sortTrack(lineTrack);
+  }
+  this.ui.pasteModal.classList.add('hidden');
+  this.addImportedTrack(lineTrack);
 },
 
 normalizeTrack(raw,forceType,name){
