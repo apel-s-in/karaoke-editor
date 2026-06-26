@@ -13,6 +13,8 @@
       <div class="grp" id="grp-files" draggable="true" data-grp="files" title="Drag to reorder">
         <span class="grp-handle"></span>
         <label class="btn">📂 Audio<input id="audio-upload" type="file" accept="audio/*" hidden></label>
+        <label class="btn pri">📥 Import<input id="import-upload" type="file" accept=".json,.srt,.lrc,.txt,application/json,text/plain" hidden></label>
+        <button class="btn" id="btn-paste-text">📋 Paste</button>
         <label class="btn">📄 Line<input id="line-upload" type="file" accept=".json,application/json" hidden></label>
         <label class="btn">📝 Words<input id="words-upload" type="file" accept=".json,application/json" hidden></label>
       </div>
@@ -338,6 +340,41 @@
       <button class="btn" id="btn-export-preview-copy">📋 Copy</button>
       <button class="btn pri" id="btn-export-preview-download">⬇ Download</button>
       <button class="btn" id="btn-export-preview-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Paste Text modal -->
+<div id="paste-modal" class="modal hidden">
+  <div class="modal-card hotkeys-card">
+    <h3>📋 Import / Paste Text</h3>
+    <p>Вставьте текст: каждая строка = строка караоke. Поддерживаются SRT / LRC (с таймкодами) и обычный текст.</p>
+    <div class="batch-row">
+      <label class="ck">Mode:</label>
+      <select id="paste-mode" style="width:160px">
+        <option value="auto" selected>Auto-detect</option>
+        <option value="txt">Plain text (lines)</option>
+        <option value="srt">SRT</option>
+        <option value="lrc">LRC</option>
+      </select>
+      <label class="ck">Target:</label>
+      <select id="paste-target" style="width:90px">
+        <option value="line" selected>Line</option>
+        <option value="words">Words</option>
+      </select>
+    </div>
+    <div class="batch-row" id="paste-txt-opts">
+      <label class="ck">TXT spread:</label>
+      <select id="paste-txt-spread" style="width:170px">
+        <option value="even" selected>Even over song</option>
+        <option value="fixed">Fixed sec/line</option>
+      </select>
+      <input id="paste-txt-dur" type="number" step="0.1" value="2" style="width:70px" title="sec per line (fixed)">
+    </div>
+    <textarea id="paste-text-area" style="flex:1;min-height:260px;font:13px Consolas,monospace;background:#111317;color:#e7ebf2;border:1px solid #4a5263;border-radius:6px;padding:8px;resize:vertical" placeholder="Сюда вставьте текст…"></textarea>
+    <div class="modal-actions">
+      <button class="btn pri" id="btn-paste-import">Import</button>
+      <button class="btn" id="btn-paste-cancel">Cancel</button>
     </div>
   </div>
 </div>
