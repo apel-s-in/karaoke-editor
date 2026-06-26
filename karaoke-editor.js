@@ -433,7 +433,6 @@ _bindToolbarGroupDrag(){
 
 _setupRowDragDrop(row){
   let dragEl=null,placeholder=null;
-  const grps=()=>row.querySelectorAll('.grp[draggable]');
 
   row.addEventListener('dragstart',e=>{
     const grp=e.target.closest('.grp[draggable]');if(!grp)return;
@@ -1296,10 +1295,8 @@ updatePlayingHighlights(t){
 
 fmtTime(t){const m=Math.floor(t/60),s=(t%60).toFixed(2);return m+':'+(+s<10?'0':'')+s},
 
-centerOnPlayhead(){this.centerScrollOnTime(this.audioElement.currentTime)},
-
-centerScrollOnTime(time){
-  const px=time*this.zoom,sw=this.ui.timelineContainer.clientWidth;
+centerOnPlayhead(){
+  const px=this.audioElement.currentTime*this.zoom,sw=this.ui.timelineContainer.clientWidth;
   this.ui.timelineContainer.scrollLeft=Math.max(0,px-sw/2);
 },
 
@@ -1451,7 +1448,18 @@ handleMainDragMove(e){
     }
   }
 
-  this.renderTimeline();this.renderInspector();this.renderPreview();
+  this.renderTimeline();this.updateInspectorLive();this.renderPreview();
+},
+
+updateInspectorLive(){
+  // Лёгкое обновление чисел в инспекторе во время drag (без пересборки DOM)
+  if(this.selected.ids.size!==1)return;
+  const tr=this.trackById(this.selected.trackId);if(!tr)return;
+  const it=this.itemById(this.selected.trackId,[...this.selected.ids][0]);if(!it)return;
+  const sEl=document.getElementById('ins-start');
+  const eEl=document.getElementById('ins-end');
+  if(sEl)sEl.value=it.start.toFixed(3);
+  if(eEl)eEl.value=it.end.toFixed(3);
 },
 
 handleMarqueeMove(e){
@@ -1846,7 +1854,9 @@ duplicateSelected(){
 },
 
 _addItem(kind){
-  const tr=this.activeTrack();if(!tr||(kind==='word'&&tr.type==='line'))return;
+  const tr=this.activeTrack();
+  if(!tr){alert('Нет активной дорожки');return}
+  if(kind==='word'&&tr.type==='line'){alert('Слова нельзя добавить в line-дорожку. Активируйте words-дорожку.');return}
   const t=this.audioElement.currentTime;
   this.pushHistory('Add '+kind);
   const it=kind==='line'
@@ -2074,12 +2084,14 @@ renderPreview(){
   }
 
   this.ui.lyricsContainer.innerHTML=html||'<p class="muted">Нет строк</p>';
-  this.ui.lyricsContainer.querySelectorAll('.lyric-line').forEach(el=>{
-    el.onclick=()=>{
+  if(!this._previewClickBound){
+    this._previewClickBound=true;
+    this.ui.lyricsContainer.addEventListener('click',e=>{
+      const el=e.target.closest('.lyric-line');if(!el)return;
       const tid=el.dataset.tid,id=el.dataset.id,it=this.itemById(tid,id);
       if(it){this.audioElement.currentTime=it.start;this.syncPlayhead();this.selectItem(tid,id)}
-    };
-  });
+    });
+  }
   const playingEl=this.ui.lyricsContainer.querySelector('.lyric-line.playing');
   if(playingEl)playingEl.scrollIntoView({block:'nearest',behavior:'smooth'});
 },
@@ -2569,7 +2581,11 @@ navigateItem(dir){
 },
 
 switchActiveTrack(){
-  const ids=this.project.tracks.map(t=>t.id);if(!ids.length)return;
+  const all=this.project.tracks;if(!all.length)return;
+  // Кандидаты — не скрытые, не свёрнутые, не залоченные
+  const candidates=all.filter(t=>t.visible&&!this.collapsed[t.id]&&!t.locked);
+  const pool=candidates.length?candidates:all;
+  const ids=pool.map(t=>t.id);
   const cur=ids.indexOf(this.project.activeTrackId);
   this.setActiveTrack(ids[(cur+1)%ids.length]);
 },
@@ -2756,7 +2772,10 @@ _syncUiToDOM(){
 
 persistUiPrefs(){
   try{
-    const o={sidebarWidth:this.ui.sidebar.style.width,dragMode:this.ui.dragMode.value,layerMode:this.ui.layerMode.value};
+    const o=JSON.parse(localStorage.getItem(this.UI_KEY)||'{}');
+    o.sidebarWidth=this.ui.sidebar.style.width;
+    o.dragMode=this.ui.dragMode.value;
+    o.layerMode=this.ui.layerMode.value;
     this._uiPrefFields.forEach(f=>{o[f]=this[f]});
     localStorage.setItem(this.UI_KEY,JSON.stringify(o));
   }catch(e){console.warn(e)}
