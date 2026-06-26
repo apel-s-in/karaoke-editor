@@ -1139,14 +1139,19 @@ applyVerticalZoom(){
 
 _waveCache:null,_waveCacheKey:'',
 
+MAX_CANVAS_W:32760, // безопасный предел ширины canvas для mobile/Safari
+
 drawWaveform(){
   const c=this.ui.waveCanvas,x=c.getContext('2d'),
-        w=Math.ceil(Math.max(1,(this.duration||1)*this.zoom)),
+        wReq=Math.ceil(Math.max(1,(this.duration||1)*this.zoom)),
+        w=Math.min(wReq,this.MAX_CANVAS_W),
         h=Math.round(80*this.verticalZoom);
-  c.width=w;c.height=h;x.clearRect(0,0,w,h);
+  c.width=w;c.height=h;c.style.width=wReq+'px';c.style.height=h+'px';
+  x.clearRect(0,0,w,h);
   if(!this.audioBuffer){x.fillStyle='#3a3d46';x.fillRect(0,h/2-1,w,2);return}
-  const cacheKey=w+'_'+h;
+  const cacheKey=w+'_'+h+'_'+wReq;
   if(this._waveCache&&this._waveCacheKey===cacheKey){x.drawImage(this._waveCache,0,0);return}
+  // Рисуем в координатах сжатого canvas (w), но семплы берём по всей длине
   const d=this.audioBuffer.getChannelData(0),step=Math.max(1,Math.ceil(d.length/w)),amp=h/2;
   x.fillStyle='#5a7fa8';
   for(let i=0;i<w;i++){
@@ -1158,7 +1163,7 @@ drawWaveform(){
     const oc=document.createElement('canvas');oc.width=w;oc.height=h;
     oc.getContext('2d').drawImage(c,0,0);
     this._waveCache=oc;this._waveCacheKey=cacheKey;
-  }catch(e){/* canvas too large */}
+  }catch(e){this._waveCache=null}
 },
 
 renderRuler(){
@@ -1669,18 +1674,16 @@ finalizeMarquee(){
   const sl=parseInt(sb.style.left)||0,st=parseInt(sb.style.top)||0;
   const sr=sl+(parseInt(sb.style.width)||0),sb2=st+(parseInt(sb.style.height)||0);
   if(sr-sl<4&&sb2-st<4){this.afterEdit();return}
-  const wh=Math.round(80*this.verticalZoom),row=Math.round(56*this.verticalZoom),lh=Math.round(34*this.verticalZoom);
+  const base=60; // tracksContainer top offset internal (wh+60 в applyVerticalZoom, но top уже в контейнере)
   const visTracks=this.getVisibleTracks();
   let hitTid=null;
   visTracks.forEach(tr=>{
-    const ti=this.project.tracks.indexOf(tr);
-    const tTop=wh+60+ti*row,tBot=tTop+lh;
+    const tTop=this.trackTopFor(tr)+base,tBot=tTop+this.rowH(tr);
     if(st<tBot&&sb2>tTop)hitTid=tr.id;
   });
   const targetId=hitTid||this.project.activeTrackId;
   const tr=this.trackById(targetId);if(!tr)return;
-  const ti=this.project.tracks.indexOf(tr);
-  const tTop=wh+60+ti*row;
+  const tTop=this.trackTopFor(tr)+base,lh=this.rowH(tr);
   tr.items.forEach(it=>{
     const ix=it.start*this.zoom,iw=Math.max(4,(it.end-it.start)*this.zoom);
     if(ix<sr&&ix+iw>sl&&tTop<sb2&&tTop+lh>st){
