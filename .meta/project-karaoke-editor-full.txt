@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-27 15:54:38 UTC
+Сгенерировано: 2026-06-27 15:56:16 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1069,7 +1069,7 @@ init(){
 cache(){
   const g=id=>document.getElementById(id);
   this.ui={
-    audioUpload:g('audio-upload'),lineUpload:g('line-upload'),wordsUpload:g('words-upload'),
+    audioUpload:g('audio-upload'),
     sessionUpload:g('session-upload'),
     btnExportActive:g('btn-export-active'),
     btnExportSrt:g('btn-export-srt'),btnExportLrc:g('btn-export-lrc'),
@@ -1259,8 +1259,6 @@ bind(){
   this.ui.btnPasteText.onclick=()=>this.openPasteModal();
   this.ui.btnPasteImport.onclick=()=>this.applyPasteImport();
   this.ui.btnPasteCancel.onclick=()=>this.ui.pasteModal.classList.add('hidden');
-  this.ui.lineUpload.onchange=e=>this.loadTrackJSON(e.target.files[0],'line');
-  this.ui.wordsUpload.onchange=e=>this.loadTrackJSON(e.target.files[0],'words');
   this.ui.btnExportActive.onclick=()=>this.runCommand('exportActive');
   this.ui.btnExportSrt.onclick=()=>this.exportSubtitle('srt');
   this.ui.btnExportLrc.onclick=()=>this.exportSubtitle('lrc');
@@ -1602,22 +1600,15 @@ async loadAudio(file){
   finally{this.ui.loader.classList.add('hidden')}
 },
 
-/* ─── track loading ──────────────────────────────────────────────── */
-async loadTrackJSON(file,forceType){
-  if(!file)return;
-  try{
-    const raw=JSON.parse(await file.text());
-    this.addImportedTrack(this.normalizeTrack(raw,forceType,this.base(file.name)));
-  }catch(e){console.error(e);alert('Невалидный JSON: '+e.message)}
-},
-
 /* ─── universal import (SRT / LRC / TXT / JSON) ──────────────────── */
 async importAnyFile(file){
   if(!file)return;
   try{
     const txt=await file.text(),name=this.base(file.name),ext=(file.name.split('.').pop()||'').toLowerCase();
     if(ext==='json'){
-      const raw=JSON.parse(txt),type=Array.isArray(raw)&&raw[0]&&'words'in raw[0]?'words':'line';
+      const raw=JSON.parse(txt),first=Array.isArray(raw)?raw[0]:null;
+      if(!first){alert('JSON пустой или не массив');return}
+      const type=('words'in first||'start'in first||'end'in first)?'words':'line';
       return this.addImportedTrack(this.normalizeTrack(raw,type,name));
     }
     const fmt=ext==='srt'?'srt':ext==='lrc'?'lrc':'txt';
