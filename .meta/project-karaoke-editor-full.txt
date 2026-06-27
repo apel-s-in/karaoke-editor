@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-27 14:35:24 UTC
+Сгенерировано: 2026-06-27 14:37:32 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1073,8 +1073,7 @@ cache(){
   this.ui={
     audioUpload:g('audio-upload'),lineUpload:g('line-upload'),wordsUpload:g('words-upload'),
     sessionUpload:g('session-upload'),
-    btnExportActive:g('btn-export-active'),btnExportLine:g('btn-export-line'),
-    btnExportWords:g('btn-export-words'),btnExportAll:g('btn-export-all'),
+    btnExportActive:g('btn-export-active'),
     btnExportSrt:g('btn-export-srt'),btnExportLrc:g('btn-export-lrc'),
     btnSaveSession:g('btn-save-session'),btnLoadSession:g('btn-load-session'),
     btnValidate:g('btn-validate'),btnRestoreSession:g('btn-restore-session'),
@@ -1265,9 +1264,6 @@ bind(){
   this.ui.lineUpload.onchange=e=>this.loadTrackJSON(e.target.files[0],'line');
   this.ui.wordsUpload.onchange=e=>this.loadTrackJSON(e.target.files[0],'words');
   this.ui.btnExportActive.onclick=()=>this.runCommand('exportActive');
-  this.ui.btnExportLine.onclick=()=>this.exportTrack(this.trackByType('line'));
-  this.ui.btnExportWords.onclick=()=>this.exportTrack(this.trackByType('words'));
-  this.ui.btnExportAll.onclick=()=>this.exportAll();
   this.ui.btnExportSrt.onclick=()=>this.exportSubtitle('srt');
   this.ui.btnExportLrc.onclick=()=>this.exportSubtitle('lrc');
   this.ui.btnSaveSession.onclick=()=>this.saveSessionToFile();
@@ -3391,8 +3387,6 @@ serializeTrack(tr){
     };
   });
 },
-
-exportAll(){this.project.tracks.forEach(tr=>this.doExportTrack(tr))},
 
 /* Экспорт активной (или line) дорожки в SRT/LRC */
 exportSubtitle(fmt){
