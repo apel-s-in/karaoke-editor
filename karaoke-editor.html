@@ -172,10 +172,22 @@
         </div>
       </section>
       <div class="resizer-h" id="preview-resizer"></div>
-      <section class="panel panel2" id="preview-panel">
-        <h3>Lyrics Preview <button class="panel-collapse-btn" id="preview-collapse-btn" title="Свернуть">▲</button></h3>
-        <div class="panel-body" id="preview-body">
-          <div id="lyrics-container" class="lyrics"><p class="muted">Load JSON to preview</p></div>
+      <section class="panel panel2" id="preview-panel" style="display:flex;flex-direction:column;padding:0;overflow:hidden;">
+        <h3 style="padding:10px 12px 6px;margin:0;display:flex;align-items:center;gap:6px;background:#23262d;border-bottom:1px solid var(--br);z-index:2">
+          Lyrics Preview
+          <div style="margin-left:auto;display:flex;gap:4px;">
+            <button class="btn" id="btn-lyr-mode" title="Размер окна (T)" style="padding:2px 8px;font-weight:900;color:#4daaff;border-color:rgba(77,170,255,.3);background:rgba(77,170,255,.1)">Т</button>
+            <button class="btn active" id="btn-lyr-anim" title="Фоновая анимация (A)" style="padding:2px 8px;font-weight:900;color:#c8a2ff;border-color:rgba(138,43,226,.3);background:linear-gradient(135deg,#4a1a7a,#2a0a4a)">A</button>
+            <button class="panel-collapse-btn" id="preview-collapse-btn" style="margin-left:4px" title="Свернуть">▲</button>
+          </div>
+        </h3>
+        <div class="panel-body" id="preview-body" style="flex:1;display:flex;flex-direction:column;background:#0f1218;padding:0;">
+          <div id="lyrics-window" class="lyrics-normal">
+            <div class="lyrics-animated-bg active" id="lyrics-bg"></div>
+            <div class="lyrics-scroll" id="lyrics-container">
+              <div class="lyrics-placeholder">Нет данных</div>
+            </div>
+          </div>
         </div>
       </section>
     </aside>
