@@ -2217,20 +2217,21 @@ queueSetZoom(v,keepPlayhead){
 },
 
 setZoom(v,keepPlayhead){
-  const oldZoom=this.zoom,sc=this.ui.timelineContainer,t=this._scrubTime??(this.audioElement.currentTime||0);
+  const oldZoom=this.zoom,sc=this.ui.timelineContainer,t=this._scrubTime??(this.audioElement.currentTime||0),dur=this.effDuration()||this.duration||1;
   this.zoom=Math.max(10,Math.min(320,v));
-  this.ui.zoomSlider.value=this.zoom;
-  this.updateZoomReadout();
-  if(this.audioBuffer||this.duration) this.ui.waveCanvas.style.width=Math.ceil(Math.max(1,(this.duration||1)*this.zoom))+'px';
-  this.renderHeaders();this.renderTimeline();this.renderRuler();this.syncPlayhead();this.renderLoopRegion();
+  this.ui.zoomSlider.value=this.zoom;this.updateZoomReadout();
+  const wReq=Math.ceil(Math.max(1,dur*this.zoom));
+  this.ui.waveCanvas.style.width=wReq+'px';
+  this.ui.rulerCanvas.style.width=wReq+'px';
+  this.ui.gridCanvas.style.width=wReq+'px';
+  this.renderTimeline();this.syncPlayhead();this.renderLoopRegion();this._syncHeadersScroll();
   if(keepPlayhead){
     const relPos=t*oldZoom-sc.scrollLeft;
     sc.scrollLeft=Math.max(0,t*this.zoom-relPos);
     this._syncHeadersScroll();
   }
-  clearTimeout(this._waveRedrawTimer);
-  this._waveRedrawTimer=setTimeout(()=>this.drawWaveform(),180);
-  this.persistUiPrefs();
+  clearTimeout(this._zoomHeavyTimer);
+  this._zoomHeavyTimer=setTimeout(()=>{this.renderRuler();this.drawWaveform();this.persistUiPrefs()},140);
 },
 
 setVerticalZoom(v){
