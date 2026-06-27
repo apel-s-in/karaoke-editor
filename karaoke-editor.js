@@ -1116,6 +1116,14 @@ mergeTexts(a,b){
   return(a.trim()+' '+b.trim()).replace(/\s{2,}/g,' ').trim();
 },
 
+/** Эффективная длительность: аудио ИЛИ конец последнего элемента (для работы без звука) */
+effDuration(){
+  if(this.duration>0)return this.duration;
+  let max=0;
+  this.project.tracks.forEach(t=>t.items.forEach(i=>{if(i.end>max)max=i.end}));
+  return max>0?max+5:0;
+},
+
 /* ─── render core ────────────────────────────────────────────────── */
 fullRender(){
   this.applyVerticalZoom();
@@ -1169,16 +1177,17 @@ drawWaveform(){
 },
 
 renderRuler(){
-  if(!this.duration){this.clearCanvas(this.ui.rulerCanvas);this.clearCanvas(this.ui.gridCanvas);return}
+  const dur=this.effDuration();
+  if(!dur){this.clearCanvas(this.ui.rulerCanvas);this.clearCanvas(this.ui.gridCanvas);return}
   const r=this.ui.rulerCanvas,g=this.ui.gridCanvas,rx=r.getContext('2d'),gx=g.getContext('2d'),
-        w=Math.ceil(this.duration*this.zoom),
+        w=Math.ceil(dur*this.zoom),
         gh=this.ui.tracksContainer.offsetTop+this.ui.tracksContainer.offsetHeight+200,
         step=this.rulerStep();
   r.width=w;r.height=30;g.width=w;g.height=gh;
   rx.clearRect(0,0,w,30);gx.clearRect(0,0,w,gh);
   rx.fillStyle='#b1b8c7';rx.font='10px Segoe UI';rx.textBaseline='top';
   gx.strokeStyle='rgba(255,255,255,.05)';
-  for(let t=0;t<=this.duration+.0001;t+=step){
+  for(let t=0;t<=dur+.0001;t+=step){
     const px=t*this.zoom,major=!(Math.round(t/step)%2),top=major?12:18;
     rx.fillRect(Math.round(px)+.5,top,1,30-top);
     if(major)rx.fillText(this.rulerTime(t),px+3,2);
@@ -1325,8 +1334,9 @@ getVisibleTracks(){
 renderTimeline(){
   this._conflictCache=new WeakMap();
   const c=this.ui.tracksContainer;c.innerHTML='';
-  if(!this.project.tracks.length||!this.duration)return;
-  const w=Math.ceil(this.duration*this.zoom);
+  const dur=this.effDuration();
+  if(!this.project.tracks.length||!dur)return;
+  const w=Math.ceil(dur*this.zoom);
   const layerM=this.ui.layerMode.value;
   const sc=this.ui.timelineContainer;
   const vpLeft=sc.scrollLeft/this.zoom,vpRight=(sc.scrollLeft+sc.clientWidth)/this.zoom;
@@ -1449,11 +1459,11 @@ hideDragModeBadge(){
 },
 
 /* ─── playhead ───────────────────────────────────────────────────── */
-syncPlayhead(){
+syncPlayhead(light){
   const t=this.audioElement.currentTime||0,px=t*this.zoom;
   this.ui.playhead.style.left=px+'px';
   this.ui.timeDisplay.textContent=this.fmtTime(t)+' / '+this.fmtTime(this.duration||1);
-  this.updatePlayingHighlights(t);
+  if(!light)this.updatePlayingHighlights(t);
   if(this.autoScroll&&this.audioElement&&!this.audioElement.paused){
     const sc=this.ui.timelineContainer,sw=sc.clientWidth,sl=sc.scrollLeft;
     if(px<sl||px>sl+sw-40)sc.scrollLeft=px-sw/2;
@@ -1532,7 +1542,9 @@ handleTimelineMouseDown(e){
       this._loopDrag={active:true,startT:t};
       this.loop={enabled:false,start:t,end:t};return;
     }
-    this.audioElement.currentTime=t;this.syncPlayhead();return;
+    // Клик по линейке = старт перетаскивания playhead (удобнее навигация)
+    this.audioElement.currentTime=t;this.syncPlayhead(true);
+    this.playheadDrag.active=true;document.body.style.cursor='ew-resize';return;
   }
 
   if(!item&&!handle&&(e.target===this.ui.scrollArea||e.target===this.ui.tracksContainer||e.target.closest('.tracks')===this.ui.tracksContainer)){
@@ -1554,7 +1566,16 @@ handlePlayheadDragMove(e){
   const rect=this.ui.scrollArea.getBoundingClientRect();
   const px=e.clientX-rect.left+this.ui.timelineContainer.scrollLeft;
   const t=Math.max(0,Math.min(px/this.zoom,this.duration||99999));
-  this.audioElement.currentTime=t;this.syncPlayhead();
+  // Двигаем линию мгновенно (CSS), а currentTime — через rAF (дорогой seek)
+  this.ui.playhead.style.left=(t*this.zoom)+'px';
+  this._pendingSeek=t;
+  if(!this._seekRAF){
+    this._seekRAF=requestAnimationFrame(()=>{
+      this._seekRAF=null;
+      this.audioElement.currentTime=this._pendingSeek;
+      this.syncPlayhead(true);
+    });
+  }
 },
 
 handleLoopDragMove(e){
@@ -1630,7 +1651,10 @@ handleMainDragMove(e){
     }
   }
 
-  this.renderTimeline();this.updateInspectorLive();this.renderPreview();
+  this.updateInspectorLive();
+  if(!this._dragRAF){
+    this._dragRAF=requestAnimationFrame(()=>{this._dragRAF=null;this.renderTimeline();this.renderPreview()});
+  }
 },
 
 updateInspectorLive(){
@@ -1656,7 +1680,12 @@ handleMarqueeMove(e){
 
 handleGlobalMouseUp(){
   this.hideDragModeBadge();
-  if(this.playheadDrag.active){this.playheadDrag.active=false;document.body.style.cursor='';return}
+  if(this.playheadDrag.active){
+    this.playheadDrag.active=false;document.body.style.cursor='';
+    if(this._seekRAF){cancelAnimationFrame(this._seekRAF);this._seekRAF=null}
+    if(this._pendingSeek!=null){this.audioElement.currentTime=this._pendingSeek;this._pendingSeek=null}
+    this.syncPlayhead();return;
+  }
   if(this.charDrag.active){this.commitCharDrag();return}
   if(this.drag.active){
     this.sortActiveTrack();
@@ -2058,9 +2087,9 @@ deleteSelected(){
 
 /* ─── navigation ─────────────────────────────────────────────────── */
 fitSong(){
-  if(!this.duration)return;
+  const dur=this.effDuration();if(!dur)return;
   const w=this.ui.timelineContainer.clientWidth;
-  this.setZoom(Math.max(10,Math.floor(w/this.duration)),false);
+  this.setZoom(Math.max(10,Math.floor(w/dur)),false);
   this.ui.timelineContainer.scrollLeft=0;
 },
 
