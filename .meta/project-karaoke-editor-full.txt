@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-27 11:13:56 UTC
+Сгенерировано: 2026-06-27 11:16:06 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1077,7 +1077,7 @@ cache(){
     audioUpload:g('audio-upload'),lineUpload:g('line-upload'),wordsUpload:g('words-upload'),
     sessionUpload:g('session-upload'),
     btnExportActive:g('btn-export-active'),btnExportLine:g('btn-export-line'),
-    btnExportWords:g('btn-export-words'),btnExportAll:g('btn-export-all'),btnExportZip:g('btn-export-zip'),
+    btnExportWords:g('btn-export-words'),btnExportAll:g('btn-export-all'),
     btnExportSrt:g('btn-export-srt'),btnExportLrc:g('btn-export-lrc'),
     btnSaveSession:g('btn-save-session'),btnLoadSession:g('btn-load-session'),
     btnValidate:g('btn-validate'),btnRestoreSession:g('btn-restore-session'),
@@ -1271,7 +1271,6 @@ bind(){
   this.ui.btnExportLine.onclick=()=>this.exportTrack(this.trackByType('line'));
   this.ui.btnExportWords.onclick=()=>this.exportTrack(this.trackByType('words'));
   this.ui.btnExportAll.onclick=()=>this.exportAll();
-  this.ui.btnExportZip.onclick=()=>this.exportZip();
   this.ui.btnExportSrt.onclick=()=>this.exportSubtitle('srt');
   this.ui.btnExportLrc.onclick=()=>this.exportSubtitle('lrc');
   this.ui.btnSaveSession.onclick=()=>this.saveSessionToFile();
@@ -3385,49 +3384,6 @@ toLRC(lines){
     return `[${String(m).padStart(2,'0')}:${(+s<10?'0':'')+s}]`;
   };
   return lines.map(l=>`${tc(l.start)}${l.text}`).join('\n');
-},
-
-exportZip(){
-  try{
-    const files=this.project.tracks.map(tr=>{
-      const normalized=this.normalizeTrackForExport(tr);
-      return{name:tr.name+'_export.json',data:new TextEncoder().encode(JSON.stringify(this.serializeTrack(normalized),null,2))};
-    });
-    if(!files.length){alert('Нет дорожек');return}
-    this.downloadBlob(this.buildZipBlob(files),'karaoke_export.zip');
-  }catch(e){alert('ZIP error: '+e.message);console.error(e)}
-},
-
-_crc32Table:null,
-_getCrc32Table(){
-  if(this._crc32Table)return this._crc32Table;
-  const t=new Uint32Array(256);
-  for(let i=0;i<256;i++){let n=i;for(let k=0;k<8;k++)n=n&1?0xEDB88320^(n>>>1):n>>>1;t[i]=n}
-  return this._crc32Table=t;
-},
-
-buildZipBlob(files){
-  const u32le=(n,b,o)=>{b[o]=n&255;b[o+1]=(n>>8)&255;b[o+2]=(n>>16)&255;b[o+3]=(n>>24)&255};
-  const u16le=(n,b,o)=>{b[o]=n&255;b[o+1]=(n>>8)&255};
-  const tbl=this._getCrc32Table();
-  const crc32=(data)=>{let c=0xFFFFFFFF;for(let i=0;i<data.length;i++)c=tbl[(c^data[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0};
-  const parts=[],cdirs=[];let offset=0;const enc=new TextEncoder();
-  files.forEach(f=>{
-    const nameB=enc.encode(f.name),data=f.data,crc=crc32(data),cs=data.length;
-    const lh=new Uint8Array(30+nameB.length);
-    u32le(0x04034b50,lh,0);u16le(20,lh,4);u32le(crc,lh,14);u32le(cs,lh,18);u32le(cs,lh,22);
-    u16le(nameB.length,lh,26);lh.set(nameB,30);
-    const cd=new Uint8Array(46+nameB.length);
-    u32le(0x02014b50,cd,0);u16le(20,cd,4);u16le(20,cd,6);
-    u32le(crc,cd,16);u32le(cs,cd,20);u32le(cs,cd,24);
-    u16le(nameB.length,cd,28);u32le(offset,cd,42);cd.set(nameB,46);
-    parts.push(lh,data);cdirs.push(cd);offset+=lh.length+cs;
-  });
-  const cdSize=cdirs.reduce((s,c)=>s+c.length,0);
-  const eocd=new Uint8Array(22);
-  u32le(0x06054b50,eocd,0);u16le(files.length,eocd,8);u16le(files.length,eocd,10);
-  u32le(cdSize,eocd,12);u32le(offset,eocd,16);
-  return new Blob([...parts,...cdirs,eocd],{type:'application/zip'});
 },
 
 downloadBlob(blob,name){
