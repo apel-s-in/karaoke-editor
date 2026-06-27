@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-27 17:00:53 UTC
+Сгенерировано: 2026-06-27 17:02:53 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1103,6 +1103,8 @@ cache(){
     sidebar:g('sidebar'),sidebarResizer:g('sidebar-resizer'),
     inspectorPanel:g('inspector'),inspectorContent:g('inspector-content'),
     previewResizer:g('preview-resizer'),lyricsContainer:g('lyrics-container'),
+    btnLyrMode:g('btn-lyr-mode'),btnLyrAnim:g('btn-lyr-anim'),
+    lyricsWindow:g('lyrics-window'),lyricsBg:g('lyrics-bg'),
     contextMenu:g('context-menu'),
     ctxEdit:g('ctx-edit'),ctxSplit:g('ctx-split'),ctxSplitCursor:g('ctx-split-cursor'),
     ctxMergePrev:g('ctx-merge-prev'),ctxMergeNext:g('ctx-merge-next'),
@@ -1308,6 +1310,18 @@ bind(){
   this.ui.snapSelect.onchange=e=>{this.snapStep=e.target.value==='items'?'items':+e.target.value};
   this.ui.autoScroll.onchange=e=>{this.autoScroll=e.target.checked;this.persistUiPrefs()};
   this.ui.autosaveEnabled.onchange=e=>{this.autosaveEnabled=e.target.checked;this.persistUiPrefs()};
+  
+  this.previewMode='normal'; this.previewAnim=true;
+  this.ui.btnLyrMode.onclick=()=>{
+    this.previewMode=this.previewMode==='normal'?'expanded':'normal';
+    this.ui.lyricsWindow.className=`lyrics-${this.previewMode}`;
+    this.renderPreview();
+  };
+  this.ui.btnLyrAnim.onclick=()=>{
+    this.previewAnim=!this.previewAnim;
+    this.ui.btnLyrAnim.classList.toggle('active',this.previewAnim);
+    this.ui.lyricsBg.classList.toggle('active',this.previewAnim);
+  };
   this.ui.autosaveInterval.onchange=e=>{this.autosaveIntervalSec=+e.target.value;this.persistUiPrefs();this.restartAutosaveLoop()};
   this.ui.volumeSlider.oninput=e=>this.setVolume(+e.target.value/100);
   this.ui.btnMute.onclick=()=>this.toggleMute();
@@ -3269,61 +3283,49 @@ updateVolumeReadout(){
 renderPreview(){
   const t=this._scrubTime??(this.audioElement.currentTime||0);
   const hasSolo=this.project.tracks.some(x=>x.solo);
-  const lineTr=this.project.tracks.find(x=>x.type==='line'&&x.visible&&!x.muted&&(!hasSolo||x.solo));
-  const wordsTr=this.project.tracks.find(x=>x.type==='words'&&x.visible&&!x.muted&&(!hasSolo||x.solo));
-  const source=lineTr||wordsTr;
-  if(!source){this.ui.lyricsContainer.innerHTML='<p class="muted">Нет данных</p>';return}
+  const tr=this.project.tracks.find(x=>(x.type==='line'||x.type==='words')&&x.visible&&!x.muted&&(!hasSolo||x.solo));
 
-  const wordsForLine=(wTr,line)=>{
-    const byId=wTr.items.filter(i=>i.kind==='word'&&i.lineId===line.id);
-    if(byId.length)return byId.sort((a,b)=>a.start-b.start);
-    return wTr.items.filter(i=>i.kind==='word'&&i.start>=line.start-.05&&i.end<=line.end+.15)
-      .sort((a,b)=>a.start-b.start);
-  };
+  if(!tr){this.ui.lyricsContainer.innerHTML='<div class="lyrics-placeholder">Нет данных</div>';return}
 
-  const wordSpans=(words,t)=>words.map(w=>`<span class="lyric-word${t>=w.start&&t<w.end?' playing':''}">${this.esc(w.text)} </span>`).join('');
+  const lines=tr.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start);
+  if(!lines.length){this.ui.lyricsContainer.innerHTML='<div class="lyrics-placeholder">Нет данных</div>';return}
 
-  const lineClass=(playing,selUI)=>`lyric-line${playing?' playing':''}${selUI?' selected-ui':''}`;
+  // Находим текущую строку по логике основного плеера:
+  // активна, пока не началась следующая.
+  let idx = -1;
+  for (let i=0; i<lines.length && t>=lines[i].start; i++) idx = i;
 
-  let html='';
-  if(source===wordsTr&&!lineTr){
-    wordsTr.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start).forEach(line=>{
-      const words=wordsForLine(wordsTr,line);
-      const playing=t>=line.start&&t<line.end;
-      const selUI=this.selected.trackId===wordsTr.id&&this.selected.ids.has(line.id);
-      html+=`<div class="${lineClass(playing,selUI)}" data-id="${line.id}" data-tid="${wordsTr.id}">`;
-      html+=words.length?wordSpans(words,t):this.esc(line.text);
-      html+='</div>';
-    });
-  }else if(lineTr&&wordsTr){
-    lineTr.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start).forEach(line=>{
-      const playing=t>=line.start&&t<line.end;
-      const selUI=this.selected.trackId===lineTr.id&&this.selected.ids.has(line.id);
-      html+=`<div class="${lineClass(playing,selUI)} preview-subline" data-id="${line.id}" data-tid="${lineTr.id}">`;
-      html+=`<span class="preview-underlay">${this.esc(line.text)}</span>`;
-      const words=wordsForLine(wordsTr,line);
-      if(words.length)html+=' <span style="opacity:.7">|</span> '+wordSpans(words,t);
-      html+='</div>';
-    });
-  }else{
-    source.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start).forEach(line=>{
-      const playing=t>=line.start&&t<line.end;
-      const selUI=this.selected.trackId===source.id&&this.selected.ids.has(line.id);
-      html+=`<div class="${lineClass(playing,selUI)}" data-id="${line.id}" data-tid="${source.id}">${this.esc(line.text)}</div>`;
-    });
+  // Логика "окошка" центрирования
+  const sz = this.previewMode === 'expanded' ? 9 : 5;
+  const hf = Math.floor(sz/2);
+  const s = Math.max(0, idx - hf);
+  const pT = Math.max(0, hf - idx);
+
+  const html = Array(sz).fill('<div class="lyrics-window-line"></div>');
+  for(let i=0, end=Math.min(lines.length-s, sz-pT); i<end; i++){
+    const line = lines[s+i];
+    const isActive = (s+i) === idx;
+    
+    let content = this.esc(line.text);
+    // Доп. фича: подсветка слов внутри активной строки для words-трека
+    if(tr.type==='words'){
+      const words = tr.items.filter(w=>w.kind==='word'&&w.lineId===line.id).sort((a,b)=>a.start-b.start);
+      if(words.length) content = words.map(w=>`<span class="lyric-word${t>=w.start&&t<w.end?' playing':''}">${this.esc(w.text)} </span>`).join('');
+    }
+
+    html[pT+i] = `<div class="lyrics-window-line${isActive?' active':''}" data-id="${line.id}" data-tid="${tr.id}">${content}</div>`;
   }
 
-  this.ui.lyricsContainer.innerHTML=html||'<p class="muted">Нет строк</p>';
+  this.ui.lyricsContainer.innerHTML = html.join('');
+
   if(!this._previewClickBound){
     this._previewClickBound=true;
     this.ui.lyricsContainer.addEventListener('click',e=>{
-      const el=e.target.closest('.lyric-line');if(!el)return;
+      const el=e.target.closest('.lyrics-window-line');if(!el||!el.dataset.id)return;
       const tid=el.dataset.tid,id=el.dataset.id,it=this.itemById(tid,id);
       if(it){this.audioElement.currentTime=it.start;this.syncPlayhead();this.selectItem(tid,id)}
     });
   }
-  const playingEl=this.ui.lyricsContainer.querySelector('.lyric-line.playing');
-  if(playingEl)playingEl.scrollIntoView({block:'nearest',behavior:'smooth'});
 },
 
 /* ─── export ─────────────────────────────────────────────────────── */
