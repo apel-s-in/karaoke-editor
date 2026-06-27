@@ -1459,11 +1459,11 @@ hideDragModeBadge(){
 },
 
 /* ─── playhead ───────────────────────────────────────────────────── */
-syncPlayhead(light){
+syncPlayhead(){
   const t=this.audioElement.currentTime||0,px=t*this.zoom;
   this.ui.playhead.style.left=px+'px';
   this.ui.timeDisplay.textContent=this.fmtTime(t)+' / '+this.fmtTime(this.duration||1);
-  if(!light)this.updatePlayingHighlights(t);
+  this.updatePlayingHighlights(t);
   if(this.autoScroll&&this.audioElement&&!this.audioElement.paused){
     const sc=this.ui.timelineContainer,sw=sc.clientWidth,sl=sc.scrollLeft;
     if(px<sl||px>sl+sw-40)sc.scrollLeft=px-sw/2;
@@ -1542,9 +1542,7 @@ handleTimelineMouseDown(e){
       this._loopDrag={active:true,startT:t};
       this.loop={enabled:false,start:t,end:t};return;
     }
-    // Клик по линейке = старт перетаскивания playhead (удобнее навигация)
-    this.audioElement.currentTime=t;this.syncPlayhead(true);
-    this.playheadDrag.active=true;document.body.style.cursor='ew-resize';return;
+    this.audioElement.currentTime=t;this.syncPlayhead();return;
   }
 
   if(!item&&!handle&&(e.target===this.ui.scrollArea||e.target===this.ui.tracksContainer||e.target.closest('.tracks')===this.ui.tracksContainer)){
@@ -1566,16 +1564,7 @@ handlePlayheadDragMove(e){
   const rect=this.ui.scrollArea.getBoundingClientRect();
   const px=e.clientX-rect.left+this.ui.timelineContainer.scrollLeft;
   const t=Math.max(0,Math.min(px/this.zoom,this.duration||99999));
-  // Двигаем линию мгновенно (CSS), а currentTime — через rAF (дорогой seek)
-  this.ui.playhead.style.left=(t*this.zoom)+'px';
-  this._pendingSeek=t;
-  if(!this._seekRAF){
-    this._seekRAF=requestAnimationFrame(()=>{
-      this._seekRAF=null;
-      this.audioElement.currentTime=this._pendingSeek;
-      this.syncPlayhead(true);
-    });
-  }
+  this.audioElement.currentTime=t;this.syncPlayhead();
 },
 
 handleLoopDragMove(e){
@@ -1651,10 +1640,7 @@ handleMainDragMove(e){
     }
   }
 
-  this.updateInspectorLive();
-  if(!this._dragRAF){
-    this._dragRAF=requestAnimationFrame(()=>{this._dragRAF=null;this.renderTimeline();this.renderPreview()});
-  }
+  this.renderTimeline();this.updateInspectorLive();this.renderPreview();
 },
 
 updateInspectorLive(){
@@ -1680,12 +1666,7 @@ handleMarqueeMove(e){
 
 handleGlobalMouseUp(){
   this.hideDragModeBadge();
-  if(this.playheadDrag.active){
-    this.playheadDrag.active=false;document.body.style.cursor='';
-    if(this._seekRAF){cancelAnimationFrame(this._seekRAF);this._seekRAF=null}
-    if(this._pendingSeek!=null){this.audioElement.currentTime=this._pendingSeek;this._pendingSeek=null}
-    this.syncPlayhead();return;
-  }
+  if(this.playheadDrag.active){this.playheadDrag.active=false;document.body.style.cursor='';return}
   if(this.charDrag.active){this.commitCharDrag();return}
   if(this.drag.active){
     this.sortActiveTrack();
