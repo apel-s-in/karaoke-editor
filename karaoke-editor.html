@@ -32,9 +32,7 @@
         <button class="btn" id="btn-validate">✓ QA</button>
         <button class="btn" id="btn-restore-session" title="Restore draft">⟳</button>
         <button class="btn" id="btn-recent">🕐</button>
-        <button class="btn" id="btn-hotkeys">⌨</button>
-        <button class="btn" id="btn-help">?</button>
-        <button class="btn" id="btn-vkbd">KBD</button>
+        <button class="btn" id="btn-hotkeys">⌨ Keys</button>
       </div>
       <span class="sep"></span>
       <div class="grp" id="grp-transport" draggable="true" data-grp="transport" title="Drag to reorder">
@@ -239,11 +237,13 @@
   </div>
 </div>
 
-<!-- Hotkeys modal -->
+<!-- Hotkeys + Keyboard modal -->
 <div id="hotkeys-modal" class="modal hidden">
   <div class="modal-card hotkeys-card">
-    <h3>⌨ Горячие клавиши</h3>
-    <p>Нажми «Set», затем нажми нужную клавишу. «Clear» — очистить. Конфликты выделены оранжевым.</p>
+    <h3>⌨ Keyboard / Горячие клавиши</h3>
+    <p>Сверху — виртуальная клавиатура назначений. Ниже — список команд. Нажми «Set», затем нужную клавишу. Если комбинация уже занята, старое назначение будет очищено.</p>
+    <div id="vkbd-display" style="font-family:Consolas,monospace;font-size:12px;line-height:1.8;background:#111317;border:1px solid #343844;border-radius:8px;padding:10px;overflow:auto;max-height:220px;margin-bottom:8px"></div>
+    <div id="vkbd-hint" style="margin:0 0 8px;font-size:12px;color:#7bd882;min-height:18px"></div>
     <div id="hotkeys-conflicts" style="margin:0 0 8px;font-size:12px;color:#ff9800;min-height:16px"></div>
     <div style="margin-bottom:6px;display:flex;gap:6px">
       <input id="hk-search" type="text" placeholder="Поиск команды…" style="flex:1">
@@ -274,18 +274,6 @@
   </div>
 </div>
 
-<!-- Help modal -->
-<div id="help-modal" class="modal hidden">
-  <div class="modal-card hotkeys-card">
-    <h3>? Hotkey Help / Legend</h3>
-    <p>Текущие горячие клавиши и краткое описание режимов редактора.</p>
-    <div id="help-list" class="hotkeys-list"></div>
-    <div class="modal-actions">
-      <button class="btn pri" id="btn-help-close">Close</button>
-    </div>
-  </div>
-</div>
-
 <!-- Track rename modal -->
 <div id="rename-modal" class="modal hidden">
   <div class="modal-card" style="width:340px">
@@ -310,19 +298,6 @@
     <div class="modal-actions">
       <button class="btn pri" id="btn-loop-ok">Set Loop</button>
       <button class="btn" id="btn-loop-cancel">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- Virtual Keyboard modal -->
-<div id="vkbd-modal" class="modal hidden">
-  <div class="modal-card hotkeys-card" style="max-width:780px">
-    <h3>⌨ Visual Keyboard Map</h3>
-    <p>Назначенные горячие клавиши на схеме клавиатуры. Нажми клавишу — увидишь команду.</p>
-    <div id="vkbd-display" style="font-family:Consolas,monospace;font-size:12px;line-height:1.8;background:#111317;border:1px solid #343844;border-radius:8px;padding:12px;overflow:auto;flex:1"></div>
-    <div id="vkbd-hint" style="margin-top:8px;font-size:12px;color:#ff9800;min-height:18px"></div>
-    <div class="modal-actions">
-      <button class="btn pri" id="btn-vkbd-close">Close</button>
     </div>
   </div>
 </div>
