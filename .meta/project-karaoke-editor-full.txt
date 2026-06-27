@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-27 15:58:44 UTC
+Сгенерировано: 2026-06-27 16:05:03 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1050,7 +1050,7 @@ cache(){
     btnExportSrt:g('btn-export-srt'),btnExportLrc:g('btn-export-lrc'),
     btnSaveSession:g('btn-save-session'),btnLoadSession:g('btn-load-session'),
     btnValidate:g('btn-validate'),btnRestoreSession:g('btn-restore-session'),
-    btnRecent:g('btn-recent'),btnHotkeys:g('btn-hotkeys'),btnHelp:g('btn-help'),
+    btnRecent:g('btn-recent'),btnHotkeys:g('btn-hotkeys'),
     btnPlay:g('btn-play'),btnStop:g('btn-stop'),btnLoop:g('btn-loop'),btnLoopClear:g('btn-loop-clear'),
     btnCenterPlayhead:g('btn-center-playhead'),
     btnUndo:g('btn-undo'),btnRedo:g('btn-redo'),
@@ -1092,9 +1092,7 @@ cache(){
     validationModal:g('validation-modal'),validationList:g('validation-list'),
     btnValidationClose:g('btn-validation-close'),btnValidationExport:g('btn-validation-export'),
     btnValidationFix:g('btn-validation-fix'),btnValidationRerun:g('btn-validation-rerun'),
-    helpModal:g('help-modal'),helpList:g('help-list'),btnHelpClose:g('btn-help-close'),
-    vkbdModal:g('vkbd-modal'),vkbdDisplay:g('vkbd-display'),vkbdHint:g('vkbd-hint'),
-    btnVkbd:g('btn-vkbd'),btnVkbdClose:g('btn-vkbd-close'),
+    vkbdDisplay:g('vkbd-display'),vkbdHint:g('vkbd-hint'),
     renameModal:g('rename-modal'),renameInput:g('rename-input'),renameColor:g('rename-color'),
     btnRenameOk:g('btn-rename-ok'),btnRenameCancel:g('btn-rename-cancel'),
     loopModal:g('loop-modal'),loopInVal:g('loop-in-val'),loopOutVal:g('loop-out-val'),
@@ -1181,7 +1179,6 @@ initCommands(){
     addLine(){A.addNewLine()},
     addWord(){A.addNewWord()},
     validate(){A.openValidationModal()},
-    help(){A.openHelpModal()},
     navPrev(){A.navigateItem(-1)},
     navNext(){A.navigateItem(1)},
     deleteTrack(){A.deleteActiveTrack()},
@@ -1244,9 +1241,6 @@ bind(){
   this.ui.btnRestoreSession.onclick=()=>this.openRecentModal();
   this.ui.btnRecent.onclick=()=>this.openRecentModal();
   this.ui.btnHotkeys.onclick=()=>this.runCommand('openHotkeys');
-  this.ui.btnHelp.onclick=()=>this.runCommand('help');
-  this.ui.btnVkbd.onclick=()=>this.openVkbdModal();
-  this.ui.btnVkbdClose.onclick=()=>this.ui.vkbdModal.classList.add('hidden');
   this.ui.btnHotkeysClose.onclick=()=>this.closeHotkeysModal();
   this.ui.btnHotkeysSave.onclick=()=>this.saveKeymap();
   this.ui.btnHotkeysReset.onclick=()=>{this.keymap=this.defaultKeymap();this.renderHotkeysModal()};
@@ -1255,7 +1249,6 @@ bind(){
   this.ui.btnValidationExport.onclick=()=>{this.ui.validationModal.classList.add('hidden');this.runCommand('exportActive')};
   this.ui.btnValidationFix.onclick=()=>this.autoFixOverlaps();
   this.ui.btnValidationRerun.onclick=()=>this.runCommand('validate');
-  this.ui.btnHelpClose.onclick=()=>this.ui.helpModal.classList.add('hidden');
   this.ui.btnRenameCancel.onclick=()=>this.ui.renameModal.classList.add('hidden');
   this.ui.btnRecentClose.onclick=()=>this.ui.recentModal.classList.add('hidden');
   this.ui.btnRecentClearAll.onclick=()=>{this.clearAllDrafts();this.ui.recentModal.classList.add('hidden')};
@@ -1311,7 +1304,7 @@ bind(){
   this.ui.scrollArea.addEventListener('contextmenu',e=>this.showContextMenu(e));
   document.addEventListener('click',e=>{
     if(!e.target.closest('#context-menu'))this.ui.contextMenu.classList.add('hidden');
-    ['hotkeysModal','validationModal','helpModal','renameModal','recentModal','loopModal','exportPreviewModal','pasteModal'].forEach(m=>{
+    ['hotkeysModal','validationModal','renameModal','recentModal','loopModal','exportPreviewModal','pasteModal'].forEach(m=>{
       if(e.target===this.ui[m])this.ui[m].classList.add('hidden');
     });
   });
@@ -3590,7 +3583,6 @@ defaultKeymap(){
     'add_line':{key:'Ctrl+Shift+L',desc:'Add new line at playhead',ru:'Добавить новую строку'},
     'add_word':{key:'Ctrl+Shift+W',desc:'Add new word at playhead',ru:'Добавить новое слово'},
     'validate':{key:'Ctrl+Shift+V',desc:'Open validation panel',ru:'Открыть панель валидации'},
-    'help':{key:'?',desc:'Open help',ru:'Открыть справку по клавишам'},
     'stretch_group_left':{key:'Ctrl+Alt+ArrowLeft',desc:'Stretch group left edge',ru:'Растянуть группу (левый край)'},
     'stretch_group_right':{key:'Ctrl+Alt+ArrowRight',desc:'Stretch group right edge',ru:'Растянуть группу (правый край)'},
     'nav_prev':{key:'ArrowUp',desc:'Previous item',ru:'Предыдущий элемент'},
@@ -3638,7 +3630,35 @@ openHotkeysModal(){
   setTimeout(()=>this.ui.hkSearch.focus(),80);
 },
 
+renderKeyboardMap(){
+  const km=this.keymap,rev={};
+  Object.entries(km).forEach(([cmd,cfg])=>{if(cfg.key)rev[cfg.key]=(rev[cfg.key]||[]).concat(cmd)});
+  const rows=[
+    ['Escape','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'],
+    ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'],
+    ['Tab','Q','W','E','R','T','Y','U','I','O','P','[',']','\\'],
+    ['CapsLock','A','S','D','F','G','H','J','K','L',';',"'",'Enter'],
+    ['Shift','Z','X','C','V','B','N','M',',','.','/','Shift'],
+    ['Ctrl','Alt','Space','Alt','Ctrl']
+  ];
+  const names=cmds=>cmds.map(cmd=>km[cmd]?.ru||cmd).join(' / ');
+  const matchKey=k=>{
+    const found=[];
+    Object.entries(rev).forEach(([combo,cmds])=>{
+      const main=combo.split('+').pop();
+      if(main===k||main===k.toLowerCase()||main===k.toUpperCase())found.push(...cmds);
+    });
+    return found.length?names(found):'';
+  };
+  this.ui.vkbdDisplay.innerHTML=rows.map(row=>'<div style="display:flex;gap:3px;margin-bottom:3px">'+row.map(k=>{
+    const cmd=matchKey(k),bg=cmd?'background:#1e3a2e;border-color:#43a047':'background:#1b1f27;border-color:#465063';
+    return `<div title="${cmd||k}" data-key="${k}" style="${bg};border:1px solid;border-radius:4px;padding:3px 5px;min-width:34px;text-align:center;font-size:10px;cursor:default"><div style="font-weight:700;font-size:11px">${k.length>6?k.slice(0,6):k}</div>${cmd?`<div style="font-size:9px;color:#7bd882;overflow:hidden;max-width:70px;text-overflow:ellipsis;white-space:nowrap">${cmd}</div>`:''}</div>`;
+  }).join('')+'</div>').join('');
+  this.ui.vkbdHint.textContent='Клик по Set в списке ниже → нажми клавишу для назначения.';
+},
+
 renderHotkeysModal(){
+  this.renderKeyboardMap();
   const q=(this.ui.hkSearch.value||'').toLowerCase();
   const conflicts=this.findHotkeyConflicts();
   const conflictKeys=new Set(conflicts.flatMap(c=>c.cmds));
@@ -3677,7 +3697,10 @@ captureHotkeyInput(e){
   const k=e.code==='Space'?'Space':e.key;
   if(!['Control','Alt','Shift','Meta'].includes(k))parts.push(k);
   const combo=parts.join('+');
-  if(combo)this.keymap[this.hotkeysWaiting].key=combo;
+  if(combo){
+    Object.entries(this.keymap).forEach(([cmd,cfg])=>{if(cmd!==this.hotkeysWaiting&&cfg.key===combo)cfg.key=''});
+    this.keymap[this.hotkeysWaiting].key=combo;
+  }
   this.hotkeysWaiting=null;this.renderHotkeysModal();return true;
 },
 
@@ -3712,7 +3735,7 @@ _hotkeyCommandMap:Object.freeze({
     toggle_line_vis:'toggleLineVis',toggle_words_vis:'toggleWordsVis',
     solo_active:'soloActive',lock_active:'lockActive',
     loop_toggle:'loopToggle',add_line:'addLine',add_word:'addWord',
-    validate:'validate',help:'help',
+    validate:'validate',
     stretch_group_left:'stretchGroupLeft',stretch_group_right:'stretchGroupRight',
     nav_prev:'navPrev',nav_next:'navNext',
     export_preview:'exportPreview',delete_track:'deleteTrack'
@@ -3838,57 +3861,6 @@ autoFixOverlaps(){
     });
   });
   this.markDirty();this.renderTimeline();this.openValidationModal();
-},
-
-/* ─── virtual keyboard modal ─────────────────────────────────────── */
-openVkbdModal(){
-  if(this._vkbdKeyHandler)document.removeEventListener('keydown',this._vkbdKeyHandler);
-  const km=this.keymap,rev={};
-  Object.entries(km).forEach(([cmd,cfg])=>{if(cfg.key)rev[cfg.key]=(rev[cfg.key]||[]).concat(cmd)});
-  const rows=[
-    ['Escape','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'],
-    ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'],
-    ['Tab','q','Q','w','W','e','r','t','y','u','i','o','p','[',']','\\'],
-    ['CapsLock','a','A','s','S','d','D','f','F','g','G','h','j','k','l',';',"'",'Enter'],
-    ['Shift','z','Z','x','c','C','v','V','b','n','m',',','.','/','Shift'],
-    ['Ctrl','Alt','Space','Alt','Ctrl']
-  ];
-  const getCmd=k=>{
-    for(const c of[k,k.toUpperCase(),k.toLowerCase()]){if(rev[c])return rev[c].map(cmd=>km[cmd]?.ru||cmd).join(' / ')}
-    return null;
-  };
-  this.ui.vkbdDisplay.innerHTML=rows.map(row=>'<div style="display:flex;gap:3px;margin-bottom:3px">'+
-    row.map(k=>{
-      const cmd=getCmd(k);
-      const bg=cmd?'background:#1e3a2e;border-color:#43a047':'background:#1b1f27;border-color:#465063';
-      return `<div title="${cmd||k}" style="${bg};border:1px solid;border-radius:4px;padding:3px 5px;min-width:32px;text-align:center;font-size:10px;cursor:default">
-        <div style="font-weight:700;font-size:11px">${k.length>4?k.slice(0,4):k}</div>
-        ${cmd?`<div style="font-size:9px;color:#7bd882;overflow:hidden;max-width:56px;text-overflow:ellipsis;white-space:nowrap">${cmd}</div>`:''}
-      </div>`;
-    }).join('')+'</div>').join('');
-  this.ui.vkbdHint.textContent='';
-  this._vkbdKeyHandler=ev=>{
-    const cmd=Object.entries(km).find(([,c])=>c.key&&(c.key===ev.key||c.key.endsWith('+'+ev.key)));
-    this.ui.vkbdHint.textContent=cmd?`${ev.key} → ${cmd[1].ru||cmd[0]}`:`${ev.key} — не назначено`;
-  };
-  document.addEventListener('keydown',this._vkbdKeyHandler);
-  this.ui.btnVkbdClose.onclick=()=>{
-    document.removeEventListener('keydown',this._vkbdKeyHandler);
-    this.ui.vkbdModal.classList.add('hidden');
-  };
-  this.ui.vkbdModal.classList.remove('hidden');
-},
-
-/* ─── help modal ─────────────────────────────────────────────────── */
-openHelpModal(){
-  this.ui.helpList.innerHTML=Object.entries(this.keymap).map(([,cfg])=>`
-    <div class="hk-row">
-      <span class="hk-name">${cfg.ru||cfg.desc}</span>
-      <div class="hk-key">${cfg.key||'—'}</div>
-      <span></span><span></span>
-      <span class="hk-desc">${cfg.desc}</span>
-    </div>`).join('');
-  this.ui.helpModal.classList.remove('hidden');
 },
 
 /* ─── resizer ────────────────────────────────────────────────────── */
