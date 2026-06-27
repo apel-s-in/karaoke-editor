@@ -1476,7 +1476,7 @@ syncPlayhead(){
   }
 },
 
-startPlayheadDrag(e){e.preventDefault();e.stopPropagation();this.playheadDrag.active=true;this._scrubTime=this.audioElement.currentTime||0;document.body.style.cursor='ew-resize'},
+startPlayheadDrag(e){e.preventDefault();e.stopPropagation();this.beginPlayheadScrub(e.clientX)},
 
 updatePlayingHighlights(t){
   const next=new Set();
@@ -1493,8 +1493,20 @@ updatePlayingHighlights(t){
 fmtTime(t){const m=Math.floor(t/60),s=(t%60).toFixed(2);return m+':'+(+s<10?'0':'')+s},
 
 centerOnPlayhead(){
-  const px=this.audioElement.currentTime*this.zoom,sw=this.ui.timelineContainer.clientWidth;
+  const t=this._scrubTime??(this.audioElement.currentTime||0),px=t*this.zoom,sw=this.ui.timelineContainer.clientWidth;
   this.ui.timelineContainer.scrollLeft=Math.max(0,px-sw/2);
+},
+
+clientXToTime(clientX){
+  const rect=this.ui.timelineContainer.getBoundingClientRect();
+  const px=clientX-rect.left+this.ui.timelineContainer.scrollLeft;
+  return Math.max(0,Math.min(px/this.zoom,this.effDuration()||99999));
+},
+
+beginPlayheadScrub(clientX){
+  const t=this.clientXToTime(clientX);
+  this.playheadDrag.active=true;this._scrubTime=t;document.body.style.cursor='ew-resize';
+  this.setPlayheadUi(t);this.updatePlayingHighlights(t);this.renderPreview();
 },
 
 /* ─── drag: main handlers ────────────────────────────────────────── */
@@ -1540,19 +1552,20 @@ handleTimelineMouseDown(e){
   }
 
   if(e.target===this.ui.rulerCanvas){
-    const rect=this.ui.scrollArea.getBoundingClientRect();
-    const px=e.clientX-rect.left+this.ui.timelineContainer.scrollLeft;
-    const t=Math.max(0,px/this.zoom);
+    const t=this.clientXToTime(e.clientX);
     if(e.shiftKey){
       this._loopDrag={active:true,startT:t};
       this.loop={enabled:false,start:t,end:t};return;
     }
-    this.audioElement.currentTime=t;this.syncPlayhead();return;
+    this.beginPlayheadScrub(e.clientX);return;
   }
 
-  if(!item&&!handle&&(e.target===this.ui.scrollArea||e.target===this.ui.tracksContainer||e.target.closest('.tracks')===this.ui.tracksContainer)){
-    this.marquee={active:true,startX:e.clientX,startY:e.clientY};
-    this.ui.selectionBox.classList.remove('hidden');
+  if(!item&&!handle&&(e.target===this.ui.scrollArea||e.target===this.ui.tracksContainer||e.target===this.ui.waveCanvas||e.target===this.ui.gridCanvas||e.target.closest('.tracks')===this.ui.tracksContainer)){
+    if(e.altKey){
+      this.marquee={active:true,startX:e.clientX,startY:e.clientY};
+      this.ui.selectionBox.classList.remove('hidden');return;
+    }
+    this.beginPlayheadScrub(e.clientX);return;
   }
 },
 
@@ -1566,9 +1579,7 @@ handleGlobalMouseMove(e){
 },
 
 handlePlayheadDragMove(e){
-  const rect=this.ui.scrollArea.getBoundingClientRect();
-  const px=e.clientX-rect.left+this.ui.timelineContainer.scrollLeft;
-  const t=Math.max(0,Math.min(px/this.zoom,this.effDuration()||99999));
+  const t=this.clientXToTime(e.clientX);
   this._scrubTime=t;
   this.setPlayheadUi(t);
   if(!this._scrubRAF){
@@ -1581,9 +1592,7 @@ handlePlayheadDragMove(e){
 },
 
 handleLoopDragMove(e){
-  const rect=this.ui.scrollArea.getBoundingClientRect();
-  const px=e.clientX-rect.left+this.ui.timelineContainer.scrollLeft;
-  const t=Math.max(0,px/this.zoom);
+  const t=this.clientXToTime(e.clientX);
   const s=Math.min(this._loopDrag.startT,t),en=Math.max(this._loopDrag.startT,t);
   this.loop={enabled:en-s>.05,start:s,end:en};
   this.renderLoopRegion();
@@ -1682,7 +1691,9 @@ handleGlobalMouseUp(){
   if(this.playheadDrag.active){
     this.playheadDrag.active=false;document.body.style.cursor='';
     if(this._scrubRAF){cancelAnimationFrame(this._scrubRAF);this._scrubRAF=null}
-    if(this._scrubTime!=null){this.audioElement.currentTime=this._scrubTime;this._scrubTime=null}
+    const t=this._scrubTime;
+    if(t!=null){this.audioElement.currentTime=t;this._scrubTime=null}
+    this.setPlayheadUi(t??(this.audioElement.currentTime||0));
     this.syncPlayhead();this.renderPreview();return;
   }
   if(this.charDrag.active){this.commitCharDrag();return}
@@ -2134,9 +2145,7 @@ handleLoopTick(){
 /* ─── context menu ───────────────────────────────────────────────── */
 showContextMenu(e){
   e.preventDefault();
-  const rect=this.ui.scrollArea.getBoundingClientRect();
-  const px=e.clientX-rect.left+this.ui.timelineContainer.scrollLeft;
-  this.context.cursorX=px/this.zoom;
+  this.context.cursorX=this.clientXToTime(e.clientX);
   const item=e.target.closest('.track-item');
   this.context.trackId=item?.dataset.tid||this.project.activeTrackId;
   this.context.itemId=item?.dataset.id||null;
