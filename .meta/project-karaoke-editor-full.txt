@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-27 10:52:38 UTC
+Сгенерировано: 2026-06-27 10:54:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -2294,9 +2294,9 @@ changeTrackHeight(id,delta){
   this.markDirty();this.applyVerticalZoom();this.renderHeaders();this.renderTimeline();this.renderRuler();
 },
 
-// Высота строки = высота текста + 26px (полоска меню сверху) + 6px зазор
+// Высота строки = высота текста + 34px (полоска меню 30px сверху) + зазор
 itemH(tr){return Math.round(30*this.verticalZoom*(tr.rowScale||1))},
-rowH(tr){return this.itemH(tr)+32},
+rowH(tr){return this.itemH(tr)+40},
 trackTopFor(tr){
   let top=0;
   for(const t of this.project.tracks){if(t.id===tr.id)break;top+=this.rowH(t)}
@@ -2373,8 +2373,8 @@ renderTimeline(){
     const row=this.rowH(tr),lh=this.itemH(tr);
     const color=tr.color||(tr.type==='line'?'#1e88e5':'#43a047');
     const trackTop=this.trackTopFor(tr);
-    // Серая зона = только высота текста (lh) + отступ под полоску меню (26px сверху)
-    const bgTop=trackTop+26,bgH=lh+4;
+    // Серая зона = только высота текста (lh) + отступ под полоску меню (34px сверху)
+    const bgTop=trackTop+34,bgH=lh+4;
     const trkBg=document.createElement('div');
     trkBg.style.cssText=`position:absolute;left:0;top:${bgTop}px;height:${bgH}px;width:${w}px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);border-radius:3px;pointer-events:none`;
     c.appendChild(trkBg);
@@ -2400,7 +2400,7 @@ createTrackItemElement(tr,it,trackTop,lh,color,isActive){
   if(isActive)cls+=' editable-active';
   cls+=this.conflictClass(tr,it);
   div.className=cls;
-  const itTop=trackTop+28+(it.kind==='word'?lh*.5:0);
+  const itTop=trackTop+36+(it.kind==='word'?lh*.5:0);
   const itH=it.kind==='line'?lh:lh*.5;
   div.style.cssText=`left:${px}px;width:${Math.max(4,pw)}px;top:${itTop}px;height:${itH}px;font-size:${Math.round(11*this.verticalZoom)}px`;
   div.style.borderColor=color;div.style.background=this.itemBg(it,tr,color);
@@ -2750,7 +2750,7 @@ finalizeMarquee(){
   });
   const targetId=hitTid||this.project.activeTrackId;
   const tr=this.trackById(targetId);if(!tr)return;
-  const tTop=this.trackTopFor(tr)+base+28,lh=this.itemH(tr);
+  const tTop=this.trackTopFor(tr)+base+36,lh=this.itemH(tr);
   tr.items.forEach(it=>{
     const ix=it.start*this.zoom,iw=Math.max(4,(it.end-it.start)*this.zoom);
     if(ix<sr&&ix+iw>sl&&tTop<sb2&&tTop+lh>st){
