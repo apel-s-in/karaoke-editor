@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 16:18:20 UTC
+Сгенерировано: 2026-06-28 16:41:36 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -715,6 +715,7 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
         <span class="grp-handle" title="Перетащить блок панели"></span>
         <button class="btn active-view" id="btn-toggle-insp" title="Показать/скрыть Инспектор">👁 Insp</button>
         <button class="btn active-view" id="btn-toggle-lyr" title="Показать/скрыть Текст">👁 Lyr</button>
+        <button class="btn" id="btn-reset-layout" title="Сбросить все панели к заводскому виду">⟲</button>
         <span class="sep"></span>
         <span class="badge" id="mode-indicator" title="Количество дорожек">TRACKS: 0</span>
         <span class="save-status" id="save-status" title="Статус сохранения">Saved</span>
