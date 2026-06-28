@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 20:31:55 UTC
+Сгенерировано: 2026-06-28 20:32:52 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -537,17 +537,17 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
 .panel-magnet{background:none;border:none;cursor:pointer;opacity:0.4;font-size:13px;padding:0;filter:grayscale(1)}
 .panel-magnet.active{opacity:1;filter:none;text-shadow:0 0 6px rgba(30,136,229,.6)}
 .panel-magnet:hover{opacity:1}
-.panel.panel-free{flex:none !important; align-self:flex-start; margin:4px; border:1px solid var(--br) !important; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.6); z-index:5}
+.panel.panel-free{flex:none !important; border:1px solid var(--acc) !important; box-shadow:0 8px 24px rgba(0,0,0,.6); z-index:15}
 
-/* INNER RESIZERS */
-.panel-resizer{position:absolute; z-index:10; opacity:0; transition:opacity 0.1s; background:var(--acc)}
-.panel:not(.panel-free) .panel-resizer { display:none }
-.panel-free:hover .panel-resizer { opacity:0.15 }
-.panel-resizer:hover, .panel-resizer.active { opacity:1 !important }
-.pr-t{top:0;left:0;right:0;height:5px;cursor:ns-resize}
-.pr-b{bottom:0;left:0;right:0;height:5px;cursor:ns-resize}
-.pr-l{top:0;left:0;bottom:0;width:5px;cursor:ew-resize}
-.pr-r{top:0;right:0;bottom:0;width:5px;cursor:ew-resize}
+/* INNER RESIZERS (Появляются ТОЛЬКО в отмагниченном режиме) */
+.panel-resizer{position:absolute; z-index:100; opacity:0; transition:opacity 0.1s; background:var(--acc)}
+.panel:not(.panel-free) .panel-resizer { display:none !important; pointer-events:none }
+.panel-free .panel-resizer { display:block; opacity:0.3; } /* Всегда видимые голубые грани */
+.panel-free .panel-resizer:hover, .panel-resizer.active { opacity:1 !important; }
+.pr-t{top:0;left:0;right:0;height:6px;cursor:ns-resize}
+.pr-b{bottom:0;left:0;right:0;height:6px;cursor:ns-resize}
+.pr-l{top:0;left:0;bottom:0;width:6px;cursor:ew-resize}
+.pr-r{top:0;right:0;bottom:0;width:6px;cursor:ew-resize}
 
 /* LOCK STATE BEHAVIORS */
 body.tb-locked .panel h3{cursor:default}
