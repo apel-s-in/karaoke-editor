@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 19:20:15 UTC
+Сгенерировано: 2026-06-28 19:20:41 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1479,6 +1479,10 @@ _bindPanelDragDrop(){
     z.addEventListener('drop',e=>{
       e.preventDefault(); z.classList.remove('drag-over-dock');
       if(this._dragPanel){ 
+        // Сбрасываем жесткие размеры из старого дока, чтобы Flexbox работал идеально
+        this._dragPanel.style.width = '';
+        this._dragPanel.style.height = '';
+        this._dragPanel.style.flex = '';
         z.appendChild(this._dragPanel); 
         this.applyViewPanels(); this._savePanelsOrder(); 
       }
