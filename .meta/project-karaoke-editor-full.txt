@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 15:21:10 UTC
+Сгенерировано: 2026-06-28 15:27:00 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1036,6 +1036,7 @@ zoom:80,verticalZoom:1,snapStep:0,autoScroll:true,volume:1,muted:false,dirty:fal
 autosaveEnabled:true,autosaveIntervalSec:30,autosaveTimer:null,
 project:{version:2,tracks:[],activeTrackId:null},
 selected:{trackId:null,ids:new Set()},
+clipboard:null, // Буфер обмена для Ctrl+C / Ctrl+V
 history:[],historyIndex:-1,
 drag:{active:false,type:null,trackId:null,itemId:null,startX:0,initial:{},sel:[],rollPair:null},
 marquee:{active:false,startX:0,startY:0},
@@ -1086,7 +1087,7 @@ cache(){
     btnUndo:g('btn-undo'),btnRedo:g('btn-redo'),
     btnSelectAll:g('btn-select-all'),btnDeselect:g('btn-deselect'),
     btnSplit:g('btn-split'),btnMergePrev:g('btn-merge-prev'),btnMerge:g('btn-merge'),
-    btnDuplicate:g('btn-duplicate'),btnAddLine:g('btn-add-line'),btnAddWord:g('btn-add-word'),
+    btnAddLine:g('btn-add-line'),btnAddWord:g('btn-add-word'),
     btnDelete:g('btn-delete'),btnMute:g('btn-mute'),
     zoomSlider:g('zoom-slider'),zoomReadout:g('zoom-readout'),
     vzoomSlider:g('vzoom-slider'),vzoomReadout:g('vzoom-readout'),
@@ -1109,7 +1110,7 @@ cache(){
     contextMenu:g('context-menu'),
     ctxEdit:g('ctx-edit'),ctxSplit:g('ctx-split'),ctxSplitCursor:g('ctx-split-cursor'),
     ctxMergePrev:g('ctx-merge-prev'),ctxMergeNext:g('ctx-merge-next'),
-    ctxDuplicate:g('ctx-duplicate'),ctxAddLine:g('ctx-add-line'),ctxAddWord:g('ctx-add-word'),
+    ctxAddLine:g('ctx-add-line'),ctxAddWord:g('ctx-add-word'),
     ctxBatchClose:g('ctx-batch-close'),ctxBatchDist:g('ctx-batch-dist'),ctxBatchNorm:g('ctx-batch-norm'),
     ctxMovePlayhead:g('ctx-move-playhead'),ctxZoomSelection:g('ctx-zoom-selection'),
     ctxScrollSelection:g('ctx-scroll-selection'),ctxSelTrack:g('ctx-sel-track'),ctxDelete:g('ctx-delete'),
@@ -1187,7 +1188,8 @@ initCommands(){
     split(){A.splitAtPlayhead()},
     mergeNext(){A.mergeSelectedWithNext()},
     mergePrev(){A.mergeSelectedWithPrev()},
-    duplicate(){A.duplicateSelected()},
+    copy(){A.copySelected()},
+    paste(){A.pasteClipboard()},
     deleteSelected(){A.deleteSelected()},
     selectAll(){A.selectAll()},
     deselect(){A.clearSelection()},
@@ -1297,7 +1299,6 @@ bind(){
   this.ui.btnSplit.onclick=()=>this.runCommand('split');
   this.ui.btnMergePrev.onclick=()=>this.runCommand('mergePrev');
   this.ui.btnMerge.onclick=()=>this.runCommand('mergeNext');
-  this.ui.btnDuplicate.onclick=()=>this.runCommand('duplicate');
   this.ui.btnAddLine.onclick=()=>this.runCommand('addLine');
   this.ui.btnAddWord.onclick=()=>this.runCommand('addWord');
   this.ui.btnDelete.onclick=()=>this.runCommand('deleteSelected');
@@ -2157,6 +2158,7 @@ applyVerticalZoom(){
   this.ui.waveCanvas.style.height=wh+'px';
   this.ui.tracksContainer.style.top=(wh+60)+'px';
   this.ui.tracksContainer.style.minHeight=(totalH+220)+'px';
+  this.ui.playhead.style.height=(wh+30+totalH+60)+'px'; // Ограничиваем высоту плейхеда по трекам
   document.documentElement.style.setProperty('--trkH',Math.round(34*this.verticalZoom)+'px');
   document.documentElement.style.setProperty('--trkGap',Math.round(56*this.verticalZoom)+'px');
 },
@@ -2566,7 +2568,12 @@ handleTimelineMouseDown(e){
     return;
   }
 
-  if(e.target===this.ui.rulerCanvas){
+  const rect = this.ui.timelineContainer.getBoundingClientRect();
+  const clickY = e.clientY - rect.top;
+  const waveformBottom = 30 + Math.round(80 * this.verticalZoom); // 30px ruler + waveform
+
+  // Если клик по верхней зоне (Шкала времени + Волна аудио)
+  if(clickY <= waveformBottom) {
     const t=this.clientXToTime(e.clientX);
     if(e.shiftKey){
       this._loopDrag={active:true,startT:t};
@@ -2575,12 +2582,11 @@ handleTimelineMouseDown(e){
     this.beginPlayheadScrub(e.clientX);return;
   }
 
-  if(!item&&!handle&&(e.target===this.ui.scrollArea||e.target===this.ui.tracksContainer||e.target===this.ui.waveCanvas||e.target===this.ui.gridCanvas||e.target.closest('.tracks')===this.ui.tracksContainer)){
-    if(e.altKey){
-      this.marquee={active:true,startX:e.clientX,startY:e.clientY};
-      this.ui.selectionBox.classList.remove('hidden');return;
-    }
-    this.beginPlayheadScrub(e.clientX);return;
+  // Если клик ниже волны по пустому месту (зона дорожек) — стандартное выделение рамкой!
+  if(!item && !handle) {
+    this.marquee={active:true,startX:e.clientX,startY:e.clientY};
+    this.ui.selectionBox.classList.remove('hidden');
+    return;
   }
 },
 
@@ -2893,7 +2899,6 @@ bindInspectorSingle(tr,it){
   ins('ins-split')?.addEventListener('click',()=>this.runCommand('split'));
   ins('ins-merge-prev')?.addEventListener('click',()=>this.runCommand('mergePrev'));
   ins('ins-merge-next')?.addEventListener('click',()=>this.runCommand('mergeNext'));
-  ins('ins-dup')?.addEventListener('click',()=>this.runCommand('duplicate'));
   ins('ins-del')?.addEventListener('click',()=>this.runCommand('deleteSelected'));
   ins('ins-words-from-line')?.addEventListener('click',()=>this.createWordsFromLine(tr,it));
   ins('ins-line-from-words')?.addEventListener('click',()=>this.collapseWordToLine(tr,it));
@@ -3068,23 +3073,34 @@ mergeSelectedWithPrev(){
   this.markDirty();this.afterEdit();
 },
 
-duplicateSelected(){
-  const tr=this.activeTrack();if(!tr)return;
-  const ids=[...this.selected.ids];if(!ids.length)return;
-  this.pushHistory('Duplicate');
-  const newIds=new Set();
-  ids.forEach(id=>{
-    const it=this.itemById(tr.id,id);if(!it)return;
-    const dur=it.end-it.start;
-    const nx=this.getNextOrderedNeighbor(tr,it);
-    const newStart=nx?Math.max(it.end,nx.start-dur):it.end;
-    const nit={...it,id:(it.kind==='word'?'W_':'L_')+this.uid(),start:newStart,end:newStart+dur,
-      chars:JSON.parse(JSON.stringify(it.chars||[]))};
-    tr.items.push(nit);newIds.add(nit.id);
+copySelected(){
+  const tr=this.activeTrack();if(!tr||!this.selected.ids.size)return;
+  const items=[...this.selected.ids].map(id=>this.itemById(tr.id,id)).filter(Boolean);
+  if(!items.length)return;
+  const minS=Math.min(...items.map(i=>i.start));
+  this.clipboard={trackType:tr.type,items:items.map(i=>{
+    const clone=JSON.parse(JSON.stringify(i));
+    clone.relS=clone.start-minS; clone.relE=clone.end-minS;
+    if(clone.chars) clone.chars.forEach(c=>{c.relS=this.num(c.start,clone.start)-minS;c.relE=this.num(c.end,clone.end)-minS});
+    return clone;
+  })};
+  this.ui.saveStatus.textContent='Copied'; setTimeout(()=>this.updateSaveStatus('Saved',this.dirty),1500);
+},
+
+pasteClipboard(){
+  const tr=this.activeTrack();if(!tr||!this.clipboard)return;
+  if(tr.type!==this.clipboard.trackType){alert('Нельзя вставить элементы в дорожку другого типа!');return}
+  this.pushHistory('Paste');
+  const t=this.audioElement.currentTime, newIds=new Set(), idMap={};
+  this.clipboard.items.forEach(c=>{
+    const nid=(c.kind==='word'?'W_':'L_')+this.uid(); idMap[c.id]=nid;
+    const nit={...c, id:nid, start:t+c.relS, end:t+c.relE};
+    delete nit.relS; delete nit.relE;
+    if(nit.chars) nit.chars.forEach(ch=>{ch.start=t+ch.relS; ch.end=t+ch.relE; delete ch.relS; delete ch.relE});
+    tr.items.push(nit); newIds.add(nid);
   });
-  this.selected.ids=newIds;
-  this.normalizeTrackAfterEdit(tr);
-  this.markDirty();this.afterEdit();
+  tr.items.forEach(i=>{if(newIds.has(i.id)&&i.kind==='word'&&idMap[i.lineId]) i.lineId=idMap[i.lineId]});
+  this.selected.ids=newIds; this.normalizeTrackAfterEdit(tr); this.markDirty(); this.afterEdit();
 },
 
 _addItem(kind){
@@ -3179,7 +3195,6 @@ setupContext(){
     ctxSplitCursor:()=>{hide();this.runCommand('splitAtCursor')},
     ctxMergePrev:()=>{hide();this.runCommand('mergePrev')},
     ctxMergeNext:()=>{hide();this.runCommand('mergeNext')},
-    ctxDuplicate:()=>{hide();this.runCommand('duplicate')},
     ctxAddLine:()=>{hide();this.runCommand('addLine')},
     ctxAddWord:()=>{hide();this.runCommand('addWord')},
     ctxBatchClose:()=>{hide();this.runCommand('batchCloseGaps')},
@@ -3615,7 +3630,8 @@ defaultKeymap(){
     'split':{key:'S',desc:'Split at playhead',ru:'Разрезать на позиции воспроизведения'},
     'merge_next':{key:'M',desc:'Merge with next',ru:'Объединить со следующим'},
     'merge_prev':{key:'Shift+M',desc:'Merge with previous',ru:'Объединить с предыдущим'},
-    'duplicate':{key:'D',desc:'Duplicate selected',ru:'Дублировать выбранное'},
+    'copy_cmd':{key:'Ctrl+C',desc:'Copy selected',ru:'Копировать'},
+    'paste_cmd':{key:'Ctrl+V',desc:'Paste from playhead',ru:'Вставить по курсору'},
     'delete':{key:'Delete',desc:'Delete selected',ru:'Удалить выбранное'},
     'delete_back':{key:'Backspace',desc:'Delete selected (backspace)',ru:'Удалить выбранное (backspace)'},
     'select_all':{key:'Ctrl+A',desc:'Select all',ru:'Выбрать всё'},
@@ -3767,12 +3783,12 @@ matchHotkey(cmd,e){
   const parts=cfg.key.split('+');
   const needCtrl=parts.includes('Ctrl'),needAlt=parts.includes('Alt'),needShift=parts.includes('Shift');
   const keyPart=(parts.filter(p=>!['Ctrl','Alt','Shift'].includes(p))[0]||'').toLowerCase();
-  const k1=(e.key||'').toLowerCase(), k2=(e.code||'').toLowerCase();
-  return e.ctrlKey===needCtrl&&e.altKey===needAlt&&e.shiftKey===needShift&&(k1===keyPart||k2===keyPart);
+  const k1=(e.key||'').toLowerCase(), k2=(e.code||'').toLowerCase(), k2Base=k2.replace('key','');
+  return e.ctrlKey===needCtrl&&e.altKey===needAlt&&e.shiftKey===needShift&&(k1===keyPart||k2===keyPart||k2Base===keyPart);
 },
 
 /* ─── hotkeys handler (command-map driven) ───────────────────────── */
-_hotkeyCommandMap:Object.freeze({
+  _hotkeyCommandMap:Object.freeze({
   play_pause:'playPause',stop:'stop',
     zoom_in:'zoomIn',zoom_in_eq:'zoomIn',zoom_in_num:'zoomIn',zoom_out:'zoomOut',zoom_out_num:'zoomOut',
     vzoom_in:'vzoomIn',vzoom_out:'vzoomOut',
@@ -3781,7 +3797,7 @@ _hotkeyCommandMap:Object.freeze({
     nudge_left:'nudgeLeft',nudge_right:'nudgeRight',
     stretch_left:'stretchLeft',stretch_right:'stretchRight',
     split:'split',merge_next:'mergeNext',merge_prev:'mergePrev',
-    duplicate:'duplicate',delete:'deleteSelected',delete_back:'deleteSelected',
+    copy_cmd:'copy',paste_cmd:'paste',delete:'deleteSelected',delete_back:'deleteSelected',
     select_all:'selectAll',deselect:'deselect',
     undo:'undo',redo:'redo',redo2:'redo',
     center_playhead:'centerPlayhead',fit_song:'fitSong',
