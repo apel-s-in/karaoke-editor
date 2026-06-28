@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 16:59:00 UTC
+Сгенерировано: 2026-06-28 17:05:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -3456,10 +3456,6 @@ formatExportJson(json){
     return '[\n'+json.map(o=>`  { "time": ${o.time}, "end": ${o.end||0}, "line": ${JSON.stringify(o.line)} }`).join(',\n')+'\n]';
   }
   return JSON.stringify(json,null,2);
-},
-  const tr=this.activeTrack();
-  if(!tr){alert('Нет активной дорожки');return}
-  this.openExportPreviewForTrack(tr);
 },
 
 doExportTrack(tr){
