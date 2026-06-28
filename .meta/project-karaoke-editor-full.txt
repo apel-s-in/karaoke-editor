@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-27 17:02:53 UTC
+Сгенерировано: 2026-06-28 08:39:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -642,6 +642,10 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
 #btn-lyr-anim.active{background:linear-gradient(135deg,#5a2a8a,#3a1a5a)!important;box-shadow:0 0 12px rgba(138,43,226,.4)}
 .lyric-word{display:inline-block;padding:0 2px;border-radius:3px;transition:background 0.1s}
 .lyric-word.playing{background:rgba(255,255,255,0.2);color:#fff}
+.lyrics-countdown{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:4em;font-weight:900;color:rgba(77,170,255,.35);z-index:0;pointer-events:none;user-select:none;text-shadow:0 2px 12px rgba(77,170,255,.2);animation:countdownPulse 1s ease-in-out infinite}
+.lyrics-countdown.fade-out{animation:countdownFadeOut 1s ease-out forwards}
+@keyframes countdownPulse{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.05);opacity:.45}}
+@keyframes countdownFadeOut{from{opacity:.35;transform:scale(1)}to{opacity:0;transform:scale(.9)}}
 
 //=================================================
 // FILE: /karaoke-editor.html
