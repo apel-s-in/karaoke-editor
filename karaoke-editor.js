@@ -12,7 +12,7 @@ MIN_DUR:.02,
 /* ─── state ──────────────────────────────────────────────────────── */
 audioCtx:null,audioBuffer:null,audioElement:null,duration:0,audioFileName:'audio',
 zoom:80,verticalZoom:1,snapStep:0,autoScroll:true,volume:1,muted:false,dirty:false,playbackRate:1,
-autosaveEnabled:true,autosaveIntervalSec:10,autosaveTimer:null,
+autosaveEnabled:true,autosaveIntervalSec:30,autosaveTimer:null,
 project:{version:2,tracks:[],activeTrackId:null},
 selected:{trackId:null,ids:new Set()},
 history:[],historyIndex:-1,
@@ -58,7 +58,7 @@ cache(){
     btnExportActive:g('btn-export-active'),
     btnExportSrt:g('btn-export-srt'),btnExportLrc:g('btn-export-lrc'),
     btnSaveSession:g('btn-save-session'),btnLoadSession:g('btn-load-session'),
-    btnValidate:g('btn-validate'),btnRestoreSession:g('btn-restore-session'),
+    btnValidate:g('btn-validate'),
     btnRecent:g('btn-recent'),btnHotkeys:g('btn-hotkeys'),
     btnPlay:g('btn-play'),btnStop:g('btn-stop'),btnLoop:g('btn-loop'),btnLoopClear:g('btn-loop-clear'),
     btnCenterPlayhead:g('btn-center-playhead'),
@@ -249,7 +249,6 @@ bind(){
   this.ui.btnLoadSession.onclick=()=>this.ui.sessionUpload.click();
   this.ui.sessionUpload.onchange=e=>this.loadSessionFromFile(e.target.files[0]);
   this.ui.btnValidate.onclick=()=>this.runCommand('validate');
-  this.ui.btnRestoreSession.onclick=()=>this.openRecentModal();
   this.ui.btnRecent.onclick=()=>this.openRecentModal();
   this.ui.btnHotkeys.onclick=()=>this.runCommand('openHotkeys');
   this.ui.btnHotkeysClose.onclick=()=>this.closeHotkeysModal();
@@ -2746,9 +2745,9 @@ matchHotkey(cmd,e){
   const cfg=this.keymap[cmd];if(!cfg||!cfg.key)return false;
   const parts=cfg.key.split('+');
   const needCtrl=parts.includes('Ctrl'),needAlt=parts.includes('Alt'),needShift=parts.includes('Shift');
-  const keyPart=parts.filter(p=>!['Ctrl','Alt','Shift'].includes(p))[0]||'';
-  return e.ctrlKey===needCtrl&&e.altKey===needAlt&&e.shiftKey===needShift&&
-         (e.key===keyPart||e.code===keyPart);
+  const keyPart=(parts.filter(p=>!['Ctrl','Alt','Shift'].includes(p))[0]||'').toLowerCase();
+  const k1=(e.key||'').toLowerCase(), k2=(e.code||'').toLowerCase();
+  return e.ctrlKey===needCtrl&&e.altKey===needAlt&&e.shiftKey===needShift&&(k1===keyPart||k2===keyPart);
 },
 
 /* ─── hotkeys handler (command-map driven) ───────────────────────── */
@@ -2864,7 +2863,6 @@ runValidation(){
       if(it.end<=it.start)out.push({sev:'err',msg:`[${tr.name}] "${it.text}" end <= start`});
       if(it.kind===prevKind&&it.start<prevEnd-1e-4)out.push({sev:'warn',msg:`[${tr.name}] Перекрытие: "${it.text}" (${it.start.toFixed(3)}) до ${prevEnd.toFixed(3)}`});
       if(!it.text.trim())out.push({sev:'warn',msg:`[${tr.name}] Пустой текст у элемента ${it.id}`});
-      if(it.kind===prevKind&&it.start>prevEnd+2)out.push({sev:'info',msg:`[${tr.name}] Большой разрыв перед "${it.text}" (${(it.start-prevEnd).toFixed(2)}s)`});
       prevEnd=it.end;prevKind=it.kind;
       if(it.kind==='word'&&tr.type==='words'){
         const line=tr.items.find(l=>l.kind==='line'&&l.id===it.lineId);
