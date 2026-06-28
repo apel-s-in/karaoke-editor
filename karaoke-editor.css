@@ -138,9 +138,9 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
 .inter-panel{z-index:25; margin:0; background:var(--bg3)}
 
 /* PANELS */
-.panel{display:flex;flex-direction:column;flex:1 1 0%;min-width:120px;min-height:120px;background:#1a1c21;border:1px solid var(--br);border-radius:0;overflow:hidden;margin:0}
-.dock-row > .panel { border-top: none; border-bottom: none; }
-.dock-col > .panel { border-left: none; border-right: none; }
+.panel{position:relative;display:flex;flex-direction:column;flex:1 1 0%;min-width:120px;min-height:120px;background:#1a1c21;border:1px solid var(--br);border-radius:0;overflow:hidden;margin:0;transition:margin 0.2s, box-shadow 0.2s}
+.dock-row > .panel:not(.panel-free) { border-top: none; border-bottom: none; }
+.dock-col > .panel:not(.panel-free) { border-left: none; border-right: none; }
 .panel.dragging-panel{opacity:0.5;border:1px dashed var(--acc)}
 .panel h3{margin:0;padding:6px 12px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);background:#23262d;border-bottom:1px solid var(--br);display:flex;align-items:center;gap:6px;cursor:grab;user-select:none;flex-shrink:0}
 .panel h3::before{content:'⠿';color:var(--br2);font-size:14px}
@@ -149,10 +149,26 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
 .panel2 .panel-body{padding:0;background:#0f1218;display:flex;flex-direction:column}
 .muted{color:var(--mut);font-size:13px}
 
+/* FLOATING MECHANIC (Магнитик) */
+.panel-magnet{background:none;border:none;cursor:pointer;opacity:0.4;font-size:13px;padding:0;filter:grayscale(1)}
+.panel-magnet.active{opacity:1;filter:none;text-shadow:0 0 6px rgba(30,136,229,.6)}
+.panel-magnet:hover{opacity:1}
+.panel.panel-free{flex:none !important; align-self:flex-start; margin:4px; border:1px solid var(--br) !important; border-radius:6px; box-shadow:0 6px 16px rgba(0,0,0,.6); z-index:5}
+
+/* INNER RESIZERS */
+.panel-resizer{position:absolute; z-index:10; opacity:0; transition:opacity 0.1s; background:var(--acc)}
+.panel:not(.panel-free) .panel-resizer { display:none }
+.panel-free:hover .panel-resizer { opacity:0.15 }
+.panel-resizer:hover, .panel-resizer.active { opacity:1 !important }
+.pr-t{top:0;left:0;right:0;height:5px;cursor:ns-resize}
+.pr-b{bottom:0;left:0;right:0;height:5px;cursor:ns-resize}
+.pr-l{top:0;left:0;bottom:0;width:5px;cursor:ew-resize}
+.pr-r{top:0;right:0;bottom:0;width:5px;cursor:ew-resize}
+
 /* LOCK STATE BEHAVIORS */
 body.tb-locked .panel h3{cursor:default}
-body.tb-locked .panel h3::before{display:none}
-body.tb-locked .resizer, body.tb-locked .resizer-h{pointer-events:none;opacity:0}
+body.tb-locked .panel h3::before, body.tb-locked .panel-magnet{display:none}
+body.tb-locked .resizer, body.tb-locked .resizer-h, body.tb-locked .panel-resizer{pointer-events:none;opacity:0 !important}
 body.tb-locked .dock-zone:empty, body.tb-locked .row-dock:empty{display:none !important}
 
 /* INSPECTOR */
