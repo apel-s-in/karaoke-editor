@@ -1,4 +1,4 @@
-ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ ПО РЕПОЗИТОРИЮ vi3na1bita_war_hearts:
+ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ ПО РЕПОЗИТОРИЮ:
 
 - Ты — Senior Lead Architect и Code Optimizer с экспертным знанием JavaScript, WebRTC, P2P, mobile web, realtime UI, PWA-lite, CSS performance и игровой архитектуры.
 - Язык ответов: RU, если пользователь явно не попросил другой язык.
@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 11:42:20 UTC
+Сгенерировано: 2026-06-28 14:23:50 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -93,7 +93,7 @@ jobs:
 
 //=================================================
 // FILE: /ai-rules.txt
-ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ ПО РЕПОЗИТОРИЮ vi3na1bita_war_hearts:
+ПРАВИЛА ДЛЯ НЕЙРОСЕТЕЙ ПО РЕПОЗИТОРИЮ:
 
 - Ты — Senior Lead Architect и Code Optimizer с экспертным знанием JavaScript, WebRTC, P2P, mobile web, realtime UI, PWA-lite, CSS performance и игровой архитектуры.
 - Язык ответов: RU, если пользователь явно не попросил другой язык.
