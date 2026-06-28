@@ -2270,6 +2270,18 @@ renderPreview(){
   const lines=tr.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start);
   if(!lines.length){this.ui.lyricsContainer.innerHTML='<div class="lyrics-placeholder">Нет данных</div>';return}
 
+  // Оригинальная логика таймера обратного отсчета (VI3NA1BITA-MUSIC MATCH)
+  const fT = lines[0].start;
+  if (t < fT && fT > 5) {
+    const rem = fT - t, sec = Math.ceil(rem);
+    // Кэшируем стейт, чтобы не ломать CSS-пульсацию частыми обновлениями innerHTML
+    if (this._previewLastIdx === -sec && rem >= 1) return;
+    this.ui.lyricsContainer.innerHTML = `<div class="lyrics-countdown${rem<1?' fade-out':''}"${rem<1?` style="opacity:${rem.toFixed(2)}"`:''}>${sec}</div>`;
+    this._previewLastIdx = -sec;
+    return;
+  }
+  this._previewLastIdx = null; // сброс для обычного рендера текста
+
   // Находим текущую строку по логике основного плеера:
   // активна, пока не началась следующая.
   let idx = -1;
