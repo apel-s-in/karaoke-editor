@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 16:01:39 UTC
+Сгенерировано: 2026-06-28 16:15:21 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -2165,6 +2165,7 @@ fullRender(){
 },
 
 applyVerticalZoom(){
+  const wh=Math.round(80*this.verticalZoom);
   const totalH=this.project.tracks.reduce((s,tr)=>s+this.rowH(tr),0)||Math.round(56*this.verticalZoom*2);
   const preciseBottom = wh + 60 + totalH; // Точный низ последней дорожки
   this.ui.waveCanvas.style.height=wh+'px';
