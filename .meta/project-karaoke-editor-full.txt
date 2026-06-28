@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 15:57:54 UTC
+Сгенерировано: 2026-06-28 16:01:39 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1111,7 +1111,8 @@ cache(){
     btnLyrMode:g('btn-lyr-mode'),btnLyrAnim:g('btn-lyr-anim'),
     lyricsWindow:g('lyrics-window'),lyricsBg:g('lyrics-bg'),
     contextMenu:g('context-menu'),
-    ctxEdit:g('ctx-edit'),ctxSplit:g('ctx-split'),ctxSplitCursor:g('ctx-split-cursor'),
+    ctxEdit:g('ctx-edit'),ctxCopy:g('ctx-copy'),ctxPaste:g('ctx-paste'),ctxInvert:g('ctx-invert'),
+    ctxSplit:g('ctx-split'),ctxSplitCursor:g('ctx-split-cursor'),
     ctxMergePrev:g('ctx-merge-prev'),ctxMergeNext:g('ctx-merge-next'),
     ctxAddLine:g('ctx-add-line'),ctxAddWord:g('ctx-add-word'),
     ctxBatchClose:g('ctx-batch-close'),ctxBatchDist:g('ctx-batch-dist'),ctxBatchNorm:g('ctx-batch-norm'),
@@ -1196,6 +1197,14 @@ initCommands(){
     deleteSelected(){A.deleteSelected()},
     selectAll(){A.selectAll()},
     deselect(){A.clearSelection()},
+    invertSelection(){
+      const tr=A.activeTrack();if(!tr)return;
+      const allIds = A.visibleItems(tr,A.ui.layerMode.value).map(i=>i.id);
+      const curIds = A.selected.ids;
+      A.selected.trackId = tr.id;
+      A.selected.ids = new Set(allIds.filter(id => !curIds.has(id)));
+      A.renderTimeline();A.renderInspector();
+    },
     undo(){A.undo()},
     redo(){A.redo()},
     centerPlayhead(){A.centerOnPlayhead()},
@@ -2156,12 +2165,12 @@ fullRender(){
 },
 
 applyVerticalZoom(){
-  const wh=Math.round(80*this.verticalZoom);
   const totalH=this.project.tracks.reduce((s,tr)=>s+this.rowH(tr),0)||Math.round(56*this.verticalZoom*2);
+  const preciseBottom = wh + 60 + totalH; // Точный низ последней дорожки
   this.ui.waveCanvas.style.height=wh+'px';
   this.ui.tracksContainer.style.top=(wh+60)+'px';
   this.ui.tracksContainer.style.minHeight=(totalH+220)+'px';
-  this.ui.playhead.style.height=(wh+30+totalH+60)+'px'; // Ограничиваем высоту плейхеда по трекам
+  this.ui.playhead.style.height=preciseBottom+'px'; // Жёсткое ограничение красной линии!
   document.documentElement.style.setProperty('--trkH',Math.round(34*this.verticalZoom)+'px');
   document.documentElement.style.setProperty('--trkGap',Math.round(56*this.verticalZoom)+'px');
 },
@@ -2198,10 +2207,11 @@ drawWaveform(){
 renderRuler(){
   const dur=this.effDuration();
   if(!dur){this.clearCanvas(this.ui.rulerCanvas);this.clearCanvas(this.ui.gridCanvas);return}
+  const wh = Math.round(80*this.verticalZoom), totalH = this.project.tracks.reduce((s,tr)=>s+this.rowH(tr),0);
   const r=this.ui.rulerCanvas,g=this.ui.gridCanvas,rx=r.getContext('2d'),gx=g.getContext('2d'),
         wReq=Math.ceil(dur*this.zoom),
         w=Math.min(wReq,this.MAX_CANVAS_W),
-        gh=this.ui.tracksContainer.offsetTop+this.ui.tracksContainer.offsetHeight+200,
+        gh=wh + 60 + totalH, // Жёсткое ограничение вертикальных линий сетки!
         step=this.rulerStep(),scale=w/wReq;
   r.width=w;r.height=30;r.style.width=wReq+'px';r.style.height='30px';
   g.width=w;g.height=gh;g.style.width=wReq+'px';g.style.height=gh+'px';
@@ -2577,6 +2587,7 @@ handleTimelineMouseDown(e){
 
   // Если клик по верхней зоне (Шкала времени + Волна аудио)
   if(clickY <= waveformBottom) {
+    if(!e.shiftKey) this.clearSelection(); // Сброс выделения при перемотке
     const t=this.clientXToTime(e.clientX);
     if(e.shiftKey){
       this._loopDrag={active:true,startT:t};
@@ -2587,6 +2598,7 @@ handleTimelineMouseDown(e){
 
   // Если клик ниже волны по пустому месту (зона дорожек) — стандартное выделение рамкой!
   if(!item && !handle) {
+    if(!e.shiftKey) this.clearSelection(); // Сброс выделения при клике в пустоту
     this.marquee={active:true,startX:e.clientX,startY:e.clientY};
     this.ui.selectionBox.classList.remove('hidden');
     return;
@@ -2752,7 +2764,8 @@ finalizeMarquee(){
   if(!sb||sb.classList.contains('hidden'))return;
   const sl=parseInt(sb.style.left)||0,st=parseInt(sb.style.top)||0;
   const sr=sl+(parseInt(sb.style.width)||0),sb2=st+(parseInt(sb.style.height)||0);
-  if(sr-sl<4&&sb2-st<4){this.afterEdit();return}
+  // Если рамка микроскопическая (просто клик) - снимаем выделение и выходим
+  if(sr-sl<4&&sb2-st<4){this.clearSelection();this.afterEdit();return}
   const wh=Math.round(80*this.verticalZoom),base=wh+60;
   const visTracks=this.getVisibleTracks();
   let hitTid=null;
@@ -3183,7 +3196,22 @@ showContextMenu(e){
   const item=e.target.closest('.track-item');
   this.context.trackId=item?.dataset.tid||this.project.activeTrackId;
   this.context.itemId=item?.dataset.id||null;
-  if(item&&!this.selected.ids.has(this.context.itemId))this.selectItem(this.context.trackId,this.context.itemId);
+  
+  if(item&&!this.selected.ids.has(this.context.itemId)){
+    this.clearSelection();
+    this.selectItem(this.context.trackId,this.context.itemId);
+  }
+
+  // Умное переключение кнопок меню
+  const isMulti = this.selected.ids.size > 1;
+  const hasCopy = !!this.clipboard;
+  
+  if(this.ui.ctxEdit) this.ui.ctxEdit.style.display = (!isMulti && item) ? 'block' : 'none';
+  if(this.ui.ctxBatchClose) this.ui.ctxBatchClose.style.display = isMulti ? 'block' : 'none';
+  if(this.ui.ctxBatchDist) this.ui.ctxBatchDist.style.display = isMulti ? 'block' : 'none';
+  if(this.ui.ctxBatchNorm) this.ui.ctxBatchNorm.style.display = isMulti ? 'block' : 'none';
+  if(this.ui.ctxPaste) this.ui.ctxPaste.style.display = hasCopy ? 'block' : 'none';
+
   const m=this.ui.contextMenu;
   m.style.left=Math.min(e.clientX,window.innerWidth-220)+'px';
   m.style.top=Math.min(e.clientY,window.innerHeight-340)+'px';
@@ -3194,6 +3222,9 @@ setupContext(){
   const hide=()=>this.ui.contextMenu.classList.add('hidden');
   const ctxMap={
     ctxEdit:()=>{hide();this.runCommand('editText')},
+    ctxCopy:()=>{hide();this.runCommand('copy')},
+    ctxPaste:()=>{hide();this.runCommand('paste')},
+    ctxInvert:()=>{hide();this.runCommand('invertSelection')},
     ctxSplit:()=>{hide();this.runCommand('split')},
     ctxSplitCursor:()=>{hide();this.runCommand('splitAtCursor')},
     ctxMergePrev:()=>{hide();this.runCommand('mergePrev')},
