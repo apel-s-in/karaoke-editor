@@ -2339,7 +2339,7 @@ formatExportJson(json){
     return '[\n'+json.map(o=>`  { "time": ${o.time}, "end": ${o.end||0}, "line": ${JSON.stringify(o.line)} }`).join(',\n')+'\n]';
   }
   return JSON.stringify(json,null,2);
-}
+},
 
 openExportPreviewForTrack(tr){
   try{
