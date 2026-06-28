@@ -470,7 +470,7 @@ _bindToolbarGroupDrag(){
     this._applyToolbarLock(!this._toolbarLocked);
     this._saveLayoutPref('toolbarLocked',this._toolbarLocked);
   });
-}
+},
 
 _applyToolbarLock(locked){
   this._toolbarLocked=locked;
@@ -2408,18 +2408,8 @@ renderPreview(){
 
 /* ─── export ─────────────────────────────────────────────────────── */
 exportTrack(tr){
-  if(!tr){alert('Нет дорожки для экспорта');return}
-  this.openExportPreviewForTrack(tr);
-},
-
-formatExportJson(json){
-  if(Array.isArray(json)&&json.length&&'time'in json[0]){
-    return '[\n'+json.map(o=>`  { "time": ${o.time}, "end": ${o.end||0}, "line": ${JSON.stringify(o.line)} }`).join(',\n')+'\n]';
-  }
-  return JSON.stringify(json,null,2);
-},
-
-openExportPreviewForTrack(tr){
+  tr=tr||this.activeTrack();
+  if(!tr){alert('Нет активной дорожки для экспорта');return}
   try{
     const normalized=this.normalizeTrackForExport(tr);
     const json=this.serializeTrack(normalized);
@@ -2429,7 +2419,14 @@ openExportPreviewForTrack(tr){
   }catch(e){alert('Ошибка подготовки экспорта: '+e.message)}
 },
 
-openExportPreview(){
+openExportPreview(){this.exportTrack()},
+
+formatExportJson(json){
+  if(Array.isArray(json)&&json.length&&'time'in json[0]){
+    return '[\n'+json.map(o=>`  { "time": ${o.time}, "end": ${o.end||0}, "line": ${JSON.stringify(o.line)} }`).join(',\n')+'\n]';
+  }
+  return JSON.stringify(json,null,2);
+},
   const tr=this.activeTrack();
   if(!tr){alert('Нет активной дорожки');return}
   this.openExportPreviewForTrack(tr);
