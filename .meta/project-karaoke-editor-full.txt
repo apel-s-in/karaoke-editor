@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 10:33:12 UTC
+Сгенерировано: 2026-06-28 11:39:35 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -681,8 +681,7 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
         <button class="btn" id="btn-load-session">📂 Load</button>
         <input id="session-upload" type="file" accept=".kep,.json" hidden>
         <button class="btn" id="btn-validate">✓ QA</button>
-        <button class="btn" id="btn-restore-session" title="Restore draft">⟳</button>
-        <button class="btn" id="btn-recent">🕐</button>
+        <button class="btn" id="btn-recent" title="Recent Drafts">🕐</button>
         <button class="btn" id="btn-hotkeys">⌨ Keys</button>
       </div>
       <span class="sep"></span>
@@ -789,8 +788,8 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
         <label class="ck"><input id="autosave-enabled" type="checkbox" checked>Save</label>
         <select id="autosave-interval" style="width:46px">
           <option value="5">5s</option>
-          <option value="10" selected>10s</option>
-          <option value="30">30s</option>
+          <option value="10">10s</option>
+          <option value="30" selected>30s</option>
         </select>
       </div>
     </div>
