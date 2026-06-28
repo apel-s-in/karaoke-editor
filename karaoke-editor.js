@@ -1141,6 +1141,7 @@ fullRender(){
 },
 
 applyVerticalZoom(){
+  const wh=Math.round(80*this.verticalZoom);
   const totalH=this.project.tracks.reduce((s,tr)=>s+this.rowH(tr),0)||Math.round(56*this.verticalZoom*2);
   const preciseBottom = wh + 60 + totalH; // Точный низ последней дорожки
   this.ui.waveCanvas.style.height=wh+'px';
