@@ -1223,11 +1223,11 @@ renderHeaders(){
     const mkBtn=(lbl,cls,title,cb)=>{const b=document.createElement('button');b.textContent=lbl;b.className=cls;b.title=title;b.onclick=cb;return b};
     const sep=()=>{const s=document.createElement('span');s.className='sep-mini';return s};
     const bV=mkBtn('V',tr.visible?'on':'','Показать/скрыть',()=>this.toggleTrackProp(tr.id,'visible'));
-    const bMu=mkBtn('M',tr.muted?'locked':'','Mute',()=>this.toggleTrackProp(tr.id,'muted'));
-    const bS=mkBtn('S',tr.solo?'sol':'','Solo',()=>this.toggleTrackProp(tr.id,'solo'));
-    const bL=mkBtn('L',tr.locked?'locked':'','Lock',()=>this.toggleTrackProp(tr.id,'locked'));
-    const bE=mkBtn('E',tr.id===this.project.activeTrackId?'on':'','Active',()=>this.setActiveTrack(tr.id));
-    const bC=mkBtn(this.collapsed[tr.id]?'▶':'▼','col-btn','Collapse',()=>this.toggleCollapse(tr.id));
+    const bMu=mkBtn('M',tr.muted?'locked':'','Вкл/выкл звук',()=>this.toggleTrackProp(tr.id,'muted'));
+    const bS=mkBtn('S',tr.solo?'sol':'','Соло (звучит только эта)',()=>this.toggleTrackProp(tr.id,'solo'));
+    const bL=mkBtn('L',tr.locked?'locked':'','Заблокировать изменения',()=>this.toggleTrackProp(tr.id,'locked'));
+    const bE=mkBtn('E',tr.id===this.project.activeTrackId?'on':'','Сделать активной (Tab)',()=>this.setActiveTrack(tr.id));
+    const bC=mkBtn(this.collapsed[tr.id]?'▶':'▼','col-btn','Свернуть/развернуть',()=>this.toggleCollapse(tr.id));
     const bHm=mkBtn('H−','','Тоньше дорожку',()=>this.changeTrackHeight(tr.id,-.2));
     const bHp=mkBtn('H+','','Толще дорожку',()=>this.changeTrackHeight(tr.id,.2));
     const bUp=mkBtn('▲','','Вверх',()=>this.reorderTrack(i,-1));
