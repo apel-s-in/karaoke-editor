@@ -128,7 +128,7 @@ cache(){
     previewCollapseBtn:g('preview-collapse-btn'),
     inspectorBody:g('inspector-body'),previewBody:g('preview-body'),
     previewPanel:g('preview-panel'),
-    btnToggleInsp:g('btn-toggle-insp'),btnToggleLyr:g('btn-toggle-lyr'),
+    btnToggleInsp:g('btn-toggle-insp'),btnToggleLyr:g('btn-toggle-lyr'),btnResetLayout:g('btn-reset-layout'),
     toolbarCompactBtn:g('toolbar-compact-btn'),
     toolbarLockBtn:g('toolbar-lock-btn'),
     toolbar:g('toolbar'),toolbarRows:g('toolbar-rows')
@@ -318,6 +318,15 @@ bind(){
   this.ui.btnMute.onclick=()=>this.toggleMute();
   this.ui.btnToggleInsp.onclick=()=>this.togglePanelView('Insp');
   this.ui.btnToggleLyr.onclick=()=>this.togglePanelView('Lyr');
+  this.ui.btnResetLayout.onclick=()=>{
+    if(confirm('Сбросить интерфейс (окна, панели) к заводскому виду?')){
+      const p=JSON.parse(localStorage.getItem(this.UI_KEY)||'{}');
+      Object.keys(p).forEach(k=>{if(k.startsWith('layout_'))delete p[k]});
+      delete p.viewInsp;delete p.viewLyr;
+      localStorage.setItem(this.UI_KEY,JSON.stringify(p));
+      location.reload();
+    }
+  };
   this.ui.playbackRate.onchange=e=>{this.playbackRate=+e.target.value;this.audioElement.playbackRate=this.playbackRate};
   this.ui.btnExportPreviewClose.onclick=()=>this.ui.exportPreviewModal.classList.add('hidden');
   this.ui.btnExportPreviewCopy.onclick=()=>{navigator.clipboard?.writeText(this.ui.exportPreviewText.value);this.ui.btnExportPreviewCopy.textContent='✓ Copied';setTimeout(()=>{this.ui.btnExportPreviewCopy.textContent='📋 Copy'},1500)};
@@ -453,7 +462,7 @@ _bindToolbarCompact(){
 },
 
 _bindToolbarGroupDrag(){
-  // Drag-and-drop reordering of .grp blocks within .row
+  this._tbDrag = { el: null, placeholder: null };
   const rows=document.querySelectorAll('.row');
   rows.forEach(row=>this._setupRowDragDrop(row));
   this._applyToolbarLock(this._toolbarLocked!==false); // по умолчанию locked
@@ -461,7 +470,7 @@ _bindToolbarGroupDrag(){
     this._applyToolbarLock(!this._toolbarLocked);
     this._saveLayoutPref('toolbarLocked',this._toolbarLocked);
   });
-},
+}
 
 _applyToolbarLock(locked){
   this._toolbarLocked=locked;
@@ -475,43 +484,45 @@ _applyToolbarLock(locked){
 },
 
 _setupRowDragDrop(row){
-  let dragEl=null,placeholder=null;
-
   row.addEventListener('dragstart',e=>{
     const grp=e.target.closest('.grp[draggable]');if(!grp)return;
-    dragEl=grp;
-    dragEl.classList.add('dragging');
+    this._tbDrag.el=grp;
+    grp.classList.add('dragging');
     e.dataTransfer.effectAllowed='move';
     e.dataTransfer.setData('text/plain',grp.id);
-    placeholder=document.createElement('div');
-    placeholder.style.cssText=`width:${grp.offsetWidth}px;height:${grp.offsetHeight}px;border:1px dashed var(--br2);border-radius:4px;flex-shrink:0`;
-    setTimeout(()=>grp.after(placeholder),0);
+    this._tbDrag.placeholder=document.createElement('div');
+    this._tbDrag.placeholder.style.cssText=`width:${grp.offsetWidth}px;height:${grp.offsetHeight}px;border:1px dashed var(--br2);border-radius:4px;flex-shrink:0`;
+    setTimeout(()=>grp.after(this._tbDrag.placeholder),0);
   });
 
   row.addEventListener('dragover',e=>{
     e.preventDefault();e.dataTransfer.dropEffect='move';
+    if(!this._tbDrag.el)return;
     const over=e.target.closest('.grp[draggable]');
-    if(!over||over===dragEl)return;
-    const rect=over.getBoundingClientRect();
-    const insertBefore=e.clientX<rect.left+rect.width/2;
-    if(placeholder){
-      insertBefore?over.before(placeholder):over.after(placeholder);
+    if(over && over!==this._tbDrag.el){
+      const rect=over.getBoundingClientRect();
+      const insertBefore=e.clientX<rect.left+rect.width/2;
+      if(this._tbDrag.placeholder){
+        insertBefore?over.before(this._tbDrag.placeholder):over.after(this._tbDrag.placeholder);
+      }
+    } else if(!over && e.target===row){
+      if(this._tbDrag.placeholder) row.appendChild(this._tbDrag.placeholder);
     }
   });
 
   row.addEventListener('drop',e=>{
     e.preventDefault();
-    if(!dragEl||!placeholder)return;
-    placeholder.replaceWith(dragEl);
-    dragEl.classList.remove('dragging');
-    dragEl=null;placeholder=null;
+    if(!this._tbDrag.el||!this._tbDrag.placeholder)return;
+    this._tbDrag.placeholder.replaceWith(this._tbDrag.el);
+    this._tbDrag.el.classList.remove('dragging');
+    this._tbDrag.el=null;this._tbDrag.placeholder=null;
     this._saveToolbarOrder();
   });
 
   row.addEventListener('dragend',()=>{
-    if(dragEl)dragEl.classList.remove('dragging');
-    placeholder?.remove();
-    dragEl=null;placeholder=null;
+    if(this._tbDrag.el)this._tbDrag.el.classList.remove('dragging');
+    this._tbDrag.placeholder?.remove();
+    this._tbDrag.el=null;this._tbDrag.placeholder=null;
   });
 
   row.addEventListener('dragenter',e=>{if(e.target===row)row.classList.add('row-drag-over')});
@@ -1549,13 +1560,19 @@ handleTimelineMouseDown(e){
   if(item){
     const id=item.dataset.id,tid=item.dataset.tid;
     const tr=this.trackById(tid),it=this.itemById(tid,id);if(!tr||!it)return;
-    if(!e.shiftKey&&!(this.selected.trackId===tid&&this.selected.ids.has(id))){
-      this.clearSelection();this.selectItem(tid,id);
-    }else if(e.shiftKey){this.selectItem(tid,id)}
+    if(e.shiftKey){
+      if(this.selected.ids.has(id)){
+        this.selected.ids.delete(id);this.renderInspector();this.renderTimeline();
+      } else { this.selectItem(tid,id); }
+    } else {
+      if(!this.selected.ids.has(id)){
+        this.clearSelection();this.selectItem(tid,id);
+      }
+    }
     const selSnap=this.selected.trackId===tid
       ?[...this.selected.ids].map(sid=>{const si=this.itemById(tid,sid);return si?{item:si,origStart:si.start,origEnd:si.end}:null}).filter(Boolean)
       :[{item:it,origStart:it.start,origEnd:it.end}];
-    this.drag={active:true,type:'move',trackId:tid,itemId:id,startX:e.clientX,
+    this.drag={active:true,type:'move',moved:false,shiftKey:e.shiftKey,trackId:tid,itemId:id,startX:e.clientX,
       initial:{start:it.start,end:it.end},sel:selSnap,mode:this.ui.dragMode.value,rollPair:null};
     this._dragClamped=false;this._rippleAffected=new Set();
     this.showDragModeBadge(this.drag.mode);
@@ -1564,11 +1581,11 @@ handleTimelineMouseDown(e){
 
   const rect = this.ui.timelineContainer.getBoundingClientRect();
   const clickY = e.clientY - rect.top;
-  const waveformBottom = 30 + Math.round(80 * this.verticalZoom); // 30px ruler + waveform
+  const waveformBottom = 30 + Math.round(80 * this.verticalZoom);
 
   // Если клик по верхней зоне (Шкала времени + Волна аудио)
   if(clickY <= waveformBottom) {
-    if(!e.shiftKey) this.clearSelection(); // Сброс выделения при перемотке
+    if(!e.shiftKey) this.clearSelection();
     const t=this.clientXToTime(e.clientX);
     if(e.shiftKey){
       this._loopDrag={active:true,startT:t};
@@ -1579,8 +1596,8 @@ handleTimelineMouseDown(e){
 
   // Если клик ниже волны по пустому месту (зона дорожек) — стандартное выделение рамкой!
   if(!item && !handle) {
-    if(!e.shiftKey) this.clearSelection(); // Сброс выделения при клике в пустоту
-    this.marquee={active:true,startX:e.clientX,startY:e.clientY};
+    if(!e.shiftKey) this.clearSelection();
+    this.marquee={active:true,moved:false,startX:e.clientX,startY:e.clientY};
     this.ui.selectionBox.classList.remove('hidden');
     return;
   }
@@ -1640,6 +1657,7 @@ applySnap(raw,excludeIds,tr){
 
 handleMainDragMove(e){
   const dx=(e.clientX-this.drag.startX)/this.zoom;
+  if(Math.abs(e.clientX-this.drag.startX)>2) this.drag.moved = true; // Фиксируем, что был именно сдвиг
   const tr=this.trackById(this.drag.trackId);if(!tr)return;
   const mode=this.drag.mode||'free';
   this._dragClamped=false;
@@ -1694,6 +1712,7 @@ updateInspectorLive(){
 },
 
 handleMarqueeMove(e){
+  this.marquee.moved = true;
   const rect=this.ui.scrollArea.getBoundingClientRect();
   const x1=Math.min(e.clientX,this.marquee.startX)-rect.left,x2=Math.max(e.clientX,this.marquee.startX)-rect.left;
   const y1=Math.min(e.clientY,this.marquee.startY)-rect.top,y2=Math.max(e.clientY,this.marquee.startY)-rect.top;
@@ -1715,9 +1734,14 @@ handleGlobalMouseUp(){
   }
   if(this.charDrag.active){this.commitCharDrag();return}
   if(this.drag.active){
-    this.sortActiveTrack();
-    this.normalizeTrackAfterEdit(this.activeTrack());
-    this.pushHistory('Drag');this.markDirty();
+    if(this.drag.moved){
+      this.sortActiveTrack();
+      this.normalizeTrackAfterEdit(this.activeTrack());
+      this.pushHistory('Drag');this.markDirty();
+    } else if(!this.drag.shiftKey && this.selected.ids.size > 1){
+      // Если это был просто клик по элементу в выделенной группе без шифта — оставляем только его
+      this.clearSelection();this.selectItem(this.drag.trackId,this.drag.itemId);
+    }
     this.drag={active:false};
     this._dragClamped=false;this._rippleAffected=new Set();
     this.afterEdit();return;
@@ -1728,7 +1752,7 @@ handleGlobalMouseUp(){
     this.renderLoopRegion();return;
   }
   if(this.marquee.active){
-    this.finalizeMarquee();
+    if(this.marquee.moved) this.finalizeMarquee();
     this.marquee.active=false;
     this.ui.selectionBox.classList.add('hidden');
     return;
@@ -1745,8 +1769,6 @@ finalizeMarquee(){
   if(!sb||sb.classList.contains('hidden'))return;
   const sl=parseInt(sb.style.left)||0,st=parseInt(sb.style.top)||0;
   const sr=sl+(parseInt(sb.style.width)||0),sb2=st+(parseInt(sb.style.height)||0);
-  // Если рамка микроскопическая (просто клик) - снимаем выделение и выходим
-  if(sr-sl<4&&sb2-st<4){this.clearSelection();this.afterEdit();return}
   const wh=Math.round(80*this.verticalZoom),base=wh+60;
   const visTracks=this.getVisibleTracks();
   let hitTid=null;
@@ -2172,9 +2194,15 @@ handleLoopTick(){
 
 /* ─── context menu ───────────────────────────────────────────────── */
 showContextMenu(e){
+  const item=e.target.closest('.track-item');
+  if(!item && !e.target.closest('.track-head')){
+    const rect=this.ui.tracksContainer.getBoundingClientRect();
+    const totalH=this.project.tracks.reduce((s,tr)=>s+this.rowH(tr),0);
+    const clickY=e.clientY-rect.top;
+    if(clickY > totalH + 10) return; // Пустая зона ниже дорожек — оставляем нативное меню браузера
+  }
   e.preventDefault();
   this.context.cursorX=this.clientXToTime(e.clientX);
-  const item=e.target.closest('.track-item');
   this.context.trackId=item?.dataset.tid||this.project.activeTrackId;
   this.context.itemId=item?.dataset.id||null;
   
