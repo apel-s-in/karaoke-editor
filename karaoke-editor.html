@@ -149,41 +149,53 @@
 </header>
 
 <main class="workspace" id="workspace">
-  <div class="workspace-main" id="workspace-main">
-    <div class="timeline-wrap" id="timeline-container">
-      <div class="timeline-scroll" id="timeline-scroll-area">
-        <canvas id="ruler-canvas"></canvas>
-        <canvas id="grid-canvas"></canvas>
-        <canvas id="waveform-canvas"></canvas>
-        <div class="playhead" id="playhead"><div class="playhead-handle" id="playhead-handle"></div></div>
-        <div class="loop-region" id="loop-region"></div>
-        <div id="selection-box" class="selbox hidden"></div>
-        <div class="track-headers" id="track-headers"></div>
-        <div id="tracks-container" class="tracks"></div>
+  <div class="workspace-main" id="workspace-main" style="display:flex; flex:1; overflow:hidden;">
+
+    <!-- LEFT DOCK -->
+    <aside class="dock-zone dock-col" id="dock-left" style="display:none; width:300px;"></aside>
+    <div class="resizer" id="resizer-left" data-target="dock-left" style="display:none;"></div>
+
+    <!-- CENTER WORKSPACE -->
+    <div class="workspace-center" style="display:flex; flex-direction:column; flex:1; min-width:0;">
+      <div class="timeline-wrap" id="timeline-container">
+        <div class="timeline-scroll" id="timeline-scroll-area">
+          <canvas id="ruler-canvas"></canvas>
+          <canvas id="grid-canvas"></canvas>
+          <canvas id="waveform-canvas"></canvas>
+          <div class="playhead" id="playhead"><div class="playhead-handle" id="playhead-handle"></div></div>
+          <div class="loop-region" id="loop-region"></div>
+          <div id="selection-box" class="selbox hidden"></div>
+          <div class="track-headers" id="track-headers"></div>
+          <div id="tracks-container" class="tracks"></div>
+        </div>
+      </div>
+
+      <!-- BOTTOM DOCK -->
+      <div class="resizer-h" id="resizer-bottom" data-target="dock-bottom" style="display:none;"></div>
+      <div class="dock-zone dock-row" id="dock-bottom" style="display:none; height:200px;">
+         <!-- Сюда падают кнопки -->
+         <div class="row row-dock" id="row-2" data-row="2" style="width:100%; min-height:36px;"></div>
       </div>
     </div>
 
-    <div class="resizer" id="sidebar-resizer"></div>
-
-    <aside class="sidebar" id="sidebar">
-      <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="Скрыть/показать панель">◀</button>
-      <section class="panel" id="inspector">
-        <h3>Inspector <button class="panel-collapse-btn" id="inspector-collapse-btn" title="Свернуть">▲</button></h3>
+    <!-- RIGHT DOCK -->
+    <div class="resizer" id="resizer-right" data-target="dock-right" style="display:block;"></div>
+    <aside class="dock-zone dock-col" id="dock-right" style="display:flex; width:360px;">
+      <section class="panel" id="inspector" draggable="true">
+        <h3 title="Перетащить окно">Inspector</h3>
         <div class="panel-body" id="inspector-body">
           <div id="inspector-content"><p class="muted">Select element(s)</p></div>
         </div>
       </section>
-      <div class="resizer-h" id="preview-resizer"></div>
-      <section class="panel panel2" id="preview-panel" style="display:flex;flex-direction:column;padding:0;overflow:hidden;">
-        <h3 style="padding:10px 12px 6px;margin:0;display:flex;align-items:center;gap:6px;background:#23262d;border-bottom:1px solid var(--br);z-index:2">
+      <section class="panel panel2" id="preview-panel" draggable="true">
+        <h3 title="Перетащить окно">
           Lyrics Preview
           <div style="margin-left:auto;display:flex;gap:4px;">
             <button class="btn" id="btn-lyr-mode" title="Размер окна (T)" style="padding:2px 8px;font-weight:900;color:#4daaff;border-color:rgba(77,170,255,.3);background:rgba(77,170,255,.1)">Т</button>
             <button class="btn active" id="btn-lyr-anim" title="Фоновая анимация (A)" style="padding:2px 8px;font-weight:900;color:#c8a2ff;border-color:rgba(138,43,226,.3);background:linear-gradient(135deg,#4a1a7a,#2a0a4a)">A</button>
-            <button class="panel-collapse-btn" id="preview-collapse-btn" style="margin-left:4px" title="Свернуть">▲</button>
           </div>
         </h3>
-        <div class="panel-body" id="preview-body" style="flex:1;display:flex;flex-direction:column;background:#0f1218;padding:0;">
+        <div class="panel-body" id="preview-body">
           <div id="lyrics-window" class="lyrics-normal">
             <div class="lyrics-animated-bg active" id="lyrics-bg"></div>
             <div class="lyrics-scroll" id="lyrics-container">
@@ -193,8 +205,8 @@
         </div>
       </section>
     </aside>
+
   </div>
-  <div class="timeline-resizer" id="timeline-resizer"></div>
 </main>
 
 <!-- Context Menu -->
