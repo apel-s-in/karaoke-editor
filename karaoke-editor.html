@@ -157,7 +157,7 @@
 
     <!-- CENTER WORKSPACE -->
     <div class="workspace-center" style="display:flex; flex-direction:column; flex:1; min-width:0;">
-      <div class="timeline-wrap" id="timeline-container">
+      <div class="timeline-wrap" id="timeline-container" style="flex:0 0 auto;">
         <div class="timeline-scroll" id="timeline-scroll-area">
           <canvas id="ruler-canvas"></canvas>
           <canvas id="grid-canvas"></canvas>
@@ -171,8 +171,8 @@
       </div>
 
       <!-- BOTTOM DOCK -->
-      <div class="resizer-h" id="resizer-bottom" data-target="dock-bottom" style="display:none;"></div>
-      <div class="dock-zone dock-row" id="dock-bottom" style="display:none; height:200px;">
+      <div class="resizer-h" id="resizer-bottom" data-target="timeline-container" style="display:none;"></div>
+      <div class="dock-zone dock-row" id="dock-bottom" style="display:none; flex:1; flex-wrap:wrap; align-content:flex-start;">
          <!-- Сюда падают кнопки -->
          <div class="row row-dock" id="row-2" data-row="2" style="width:100%; min-height:36px;"></div>
       </div>
@@ -181,14 +181,13 @@
     <!-- RIGHT DOCK -->
     <div class="resizer" id="resizer-right" data-target="dock-right" style="display:block;"></div>
     <aside class="dock-zone dock-col" id="dock-right" style="display:flex; width:360px;">
-      <section class="panel" id="inspector" draggable="true">
+      <section class="panel" id="inspector">
         <h3 title="Перетащить окно">Inspector</h3>
         <div class="panel-body" id="inspector-body">
           <div id="inspector-content"><p class="muted">Select element(s)</p></div>
         </div>
       </section>
-      <div class="resizer-h inter-panel" id="preview-resizer" data-target="inspector" style="display:block; z-index:25;"></div>
-      <section class="panel panel2" id="preview-panel" draggable="true">
+      <section class="panel panel2" id="preview-panel">
         <h3 title="Перетащить окно">
           Lyrics Preview
           <div style="margin-left:auto;display:flex;gap:4px;">
