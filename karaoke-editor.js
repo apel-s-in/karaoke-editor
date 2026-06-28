@@ -2427,10 +2427,6 @@ formatExportJson(json){
   }
   return JSON.stringify(json,null,2);
 },
-  const tr=this.activeTrack();
-  if(!tr){alert('Нет активной дорожки');return}
-  this.openExportPreviewForTrack(tr);
-},
 
 doExportTrack(tr){
   if(!tr)return;
