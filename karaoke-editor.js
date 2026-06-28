@@ -406,19 +406,28 @@ initFlexLayout(){
 
 _bindPanelDragDrop(){
   document.querySelectorAll('.panel').forEach(p=>{
-    p.addEventListener('dragstart',e=>{
-      if(this._toolbarLocked) { e.preventDefault(); return; }
-      if(!e.target.closest('h3')) { e.preventDefault(); return; }
+    const h3 = p.querySelector('h3');
+    if(h3) {
+      // Изолируем draggable только на момент удержания заголовка, чтобы не ломать логику
+      h3.onmousedown = () => p.setAttribute('draggable', 'true');
+      h3.onmouseup = () => p.removeAttribute('draggable');
+      h3.onmouseleave = () => p.removeAttribute('draggable');
+    }
+    p.addEventListener('dragstart', e=>{
       e.dataTransfer.setData('panel-id', p.id);
-      this._dragPanel = p; // Уверенный перехват
+      this._dragPanel = p;
       setTimeout(()=>p.classList.add('dragging-panel'),0);
     });
-    p.addEventListener('dragend',()=>{ p.classList.remove('dragging-panel'); this._dragPanel=null; });
+    p.addEventListener('dragend',()=>{
+      p.classList.remove('dragging-panel');
+      p.removeAttribute('draggable');
+      this._dragPanel = null;
+    });
   });
 
   document.querySelectorAll('.dock-zone').forEach(z=>{
     z.addEventListener('dragover',e=>{
-      if(this._toolbarLocked || !this._dragPanel) return;
+      if(!this._dragPanel) return;
       e.preventDefault(); z.classList.add('drag-over-dock');
     });
     z.addEventListener('dragleave',()=>z.classList.remove('drag-over-dock'));
@@ -1133,16 +1142,17 @@ fullRender(){
 
 applyVerticalZoom(){
   const wh=Math.round(80*this.verticalZoom);
-  const totalH=this.project.tracks.reduce((s,tr)=>s+this.rowH(tr),0)||Math.round(56*this.verticalZoom*2);
+  const totalH=this.project.tracks.reduce((s,tr)=>s+this.rowH(tr),0);
   const preciseBottom = wh + 60 + totalH; 
   this.ui.waveCanvas.style.height=wh+'px';
   this.ui.tracksContainer.style.top=(wh+60)+'px';
-  this.ui.tracksContainer.style.minHeight=(totalH+20)+'px'; // Убрали огромный пустой отступ
+  this.ui.tracksContainer.style.minHeight=(totalH+20)+'px'; // Без серой пустоты снизу (крестиков)
   this.ui.playhead.style.height=preciseBottom+'px'; 
   
-  // ПРИЖИМАЕМ ЛИНИИ и поднимаем Нижний Док:
+  // Прижимаем контейнер таймлайна к трекам или используем ручную высоту
+  const requiredH = preciseBottom + 20;
   this.ui.timelineContainer.style.flex = 'none';
-  this.ui.timelineContainer.style.height = Math.min(window.innerHeight * 0.75, preciseBottom + 20) + 'px';
+  this.ui.timelineContainer.style.height = Math.min(window.innerHeight * 0.75, this._manualTimelineH || requiredH) + 'px';
   
   document.documentElement.style.setProperty('--trkH',Math.round(34*this.verticalZoom)+'px');
   document.documentElement.style.setProperty('--trkGap',Math.round(56*this.verticalZoom)+'px');
@@ -2955,29 +2965,38 @@ autoFixOverlaps(){
 
 /* ─── resizer ────────────────────────────────────────────────────── */
 startResize(e, el){
-  if(this._toolbarLocked) return;
   e.preventDefault();
-  const target=el.dataset.target, tEl=document.getElementById(target);
+  const isInter = el.classList.contains('inter-panel');
+  const target = isInter ? 'inter' : el.dataset.target;
+  const tEl = isInter ? el.previousElementSibling : document.getElementById(target);
   if(!tEl)return;
+
   el.classList.add('active');
-  this.resize={active:true, target, startX:e.clientX, startY:e.clientY, el,
-    startDim: target==='dock-bottom'||target==='inspector' ? tEl.offsetHeight : tEl.offsetWidth};
-  document.body.style.cursor = target==='dock-bottom'||target==='inspector' ? 'row-resize' : 'col-resize';
+  this.resize={
+    active:true, target, el, isInter,
+    startX:e.clientX, startY:e.clientY,
+    startDim: el.classList.contains('resizer-h') ? tEl.offsetHeight : tEl.offsetWidth
+  };
+  document.body.style.cursor = el.classList.contains('resizer-h') ? 'row-resize' : 'col-resize';
 },
 
 handleResize(e){
-  const {target,startX,startY,startDim}=this.resize;
-  const tEl=document.getElementById(target);
+  const {target, startX, startY, startDim, el, isInter} = this.resize;
+  const tEl = isInter ? el.previousElementSibling : document.getElementById(target);
   if(!tEl) return;
-  if(target==='dock-right'){
-    tEl.style.width=Math.max(200,Math.min(800,startDim-(e.clientX-startX)))+'px';
-  }else if(target==='dock-left'){
-    tEl.style.width=Math.max(200,Math.min(800,startDim+(e.clientX-startX)))+'px';
-  }else if(target==='dock-bottom'){
-    tEl.style.height=Math.max(100,Math.min(600,startDim-(e.clientY-startY)))+'px';
-  }else if(target==='inspector'){
-    tEl.style.flex='none';
-    tEl.style.height=Math.max(80,Math.min(800,startDim+(e.clientY-startY)))+'px';
+
+  if(el.classList.contains('resizer-h')){
+    // Для таймлайна и смежных окон движение вниз = увеличение высоты
+    const diff = e.clientY - startY; 
+    tEl.style.flex = 'none';
+    tEl.style.height = Math.max(40, startDim + diff) + 'px';
+    if(target === 'timeline-container') this._manualTimelineH = Math.max(80, startDim + diff);
+  }else{
+    // По умолчанию сдвиг вправо увеличивает ширину
+    let diff = e.clientX - startX;
+    if(target === 'dock-right' && !isInter) diff = startX - e.clientX; // Правый док инвертирован
+    tEl.style.flex = 'none';
+    tEl.style.width = Math.max(100, startDim + diff) + 'px';
   }
   this.renderRuler();
 },
@@ -3035,18 +3054,8 @@ applyViewPanels(){
 
   const insp = document.getElementById('inspector');
   const lyr = document.getElementById('preview-panel');
-  const rIz = document.getElementById('preview-resizer');
-  
   if(insp) insp.style.display = this.viewInsp ? 'flex' : 'none';
   if(lyr) lyr.style.display = this.viewLyr ? 'flex' : 'none';
-  
-  // Умное управление перегородочкой
-  if(insp && lyr && insp.parentNode === lyr.parentNode && this.viewInsp && this.viewLyr) {
-    insp.parentNode.insertBefore(rIz, lyr);
-    if(rIz) rIz.style.display = 'block';
-  } else if (rIz) {
-    rIz.style.display = 'none';
-  }
 
   ['left','right','bottom'].forEach(side=>{
     const d=document.getElementById('dock-'+side), r=document.getElementById('resizer-'+side);
@@ -3059,7 +3068,28 @@ applyViewPanels(){
       d.style.display = 'none'; r.style.display = 'none';
     }
   });
+  this.updateSplitters();
   setTimeout(()=>this.renderRuler(), 50);
+},
+
+updateSplitters(){
+  // Очистка старых динамических разделителей
+  document.querySelectorAll('.inter-panel').forEach(el=>el.remove());
+  
+  // Создание новых разделителей между окнами внутри одного дока
+  ['left','right','bottom'].forEach(side=>{
+    const dock = document.getElementById('dock-'+side);
+    if(!dock) return;
+    const panels = Array.from(dock.querySelectorAll('.panel')).filter(p=>p.style.display!=='none');
+    const isRow = dock.classList.contains('dock-row');
+    
+    for(let i=0; i<panels.length - 1; i++){
+      const sp = document.createElement('div');
+      sp.className = isRow ? 'resizer inter-panel' : 'resizer-h inter-panel';
+      sp.dataset.target = 'inter';
+      panels[i].after(sp);
+    }
+  });
 },
 
 _syncUiToDOM(){
