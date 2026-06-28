@@ -176,41 +176,50 @@
          <!-- Сюда падают кнопки -->
          <div class="row row-dock" id="row-2" data-row="2" style="width:100%; min-height:36px; border-bottom:1px solid var(--br); background:#15171c; flex-shrink:0;"></div>
          <!-- Сюда падают окна (Inspector, Lyrics) -->
-         <div class="dock-zone dock-row" id="dock-bottom" style="display:flex; flex:1; min-height:0; align-items:stretch;"></div>
+         <div id="bottom-panels-wrapper" style="display:flex; flex:1; min-height:0; flex-direction:row;">
+           <div class="dock-zone dock-col" id="dock-bottom-1" style="display:flex; flex:1; min-width:120px;">
+             <section class="panel" id="inspector">
+               <h3 title="Перетащить окно">
+                 <button class="panel-magnet active" title="Примагнитить / Открепить размер">🧲</button>
+                 Inspector
+               </h3>
+               <div class="panel-body" id="inspector-body">
+                 <div id="inspector-content"><p class="muted">Select element(s)</p></div>
+               </div>
+             </section>
+           </div>
+           <div class="resizer" id="resizer-b1" data-target="dock-bottom-1"></div>
+           
+           <div class="dock-zone dock-col" id="dock-bottom-2" style="display:flex; flex:1; min-width:120px;">
+             <section class="panel panel2" id="preview-panel">
+               <h3 title="Перетащить окно">
+                 <button class="panel-magnet active" title="Примагнитить / Открепить размер">🧲</button>
+                 Lyrics Preview
+                 <div style="margin-left:auto;display:flex;gap:4px;">
+                   <button class="btn" id="btn-lyr-mode" title="Размер окна (T)" style="padding:2px 8px;font-weight:900;color:#4daaff;border-color:rgba(77,170,255,.3);background:rgba(77,170,255,.1)">Т</button>
+                   <button class="btn active" id="btn-lyr-anim" title="Фоновая анимация (A)" style="padding:2px 8px;font-weight:900;color:#c8a2ff;border-color:rgba(138,43,226,.3);background:linear-gradient(135deg,#4a1a7a,#2a0a4a)">A</button>
+                 </div>
+               </h3>
+               <div class="panel-body" id="preview-body">
+                 <div id="lyrics-window" class="lyrics-normal">
+                   <div class="lyrics-animated-bg active" id="lyrics-bg"></div>
+                   <div class="lyrics-scroll" id="lyrics-container">
+                     <div class="lyrics-placeholder">Нет данных</div>
+                   </div>
+                 </div>
+               </div>
+             </section>
+           </div>
+           <div class="resizer" id="resizer-b2" data-target="dock-bottom-2"></div>
+           
+           <div class="dock-zone dock-col" id="dock-bottom-3" style="display:flex; flex:1; min-width:120px;"></div>
+         </div>
       </div>
     </div>
 
     <!-- RIGHT DOCK -->
-    <div class="resizer" id="resizer-right" data-target="dock-right" style="display:block;"></div>
-    <aside class="dock-zone dock-col" id="dock-right" style="display:flex; width:360px;">
-      <section class="panel" id="inspector">
-        <h3 title="Перетащить окно">
-          <button class="panel-magnet active" title="Примагнитить / Открепить размер">🧲</button>
-          Inspector
-        </h3>
-        <div class="panel-body" id="inspector-body">
-          <div id="inspector-content"><p class="muted">Select element(s)</p></div>
-        </div>
-      </section>
-      <section class="panel panel2" id="preview-panel">
-        <h3 title="Перетащить окно">
-          <button class="panel-magnet active" title="Примагнитить / Открепить размер">🧲</button>
-          Lyrics Preview
-          <div style="margin-left:auto;display:flex;gap:4px;">
-            <button class="btn" id="btn-lyr-mode" title="Размер окна (T)" style="padding:2px 8px;font-weight:900;color:#4daaff;border-color:rgba(77,170,255,.3);background:rgba(77,170,255,.1)">Т</button>
-            <button class="btn active" id="btn-lyr-anim" title="Фоновая анимация (A)" style="padding:2px 8px;font-weight:900;color:#c8a2ff;border-color:rgba(138,43,226,.3);background:linear-gradient(135deg,#4a1a7a,#2a0a4a)">A</button>
-          </div>
-        </h3>
-        <div class="panel-body" id="preview-body">
-          <div id="lyrics-window" class="lyrics-normal">
-            <div class="lyrics-animated-bg active" id="lyrics-bg"></div>
-            <div class="lyrics-scroll" id="lyrics-container">
-              <div class="lyrics-placeholder">Нет данных</div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </aside>
+    <div class="resizer" id="resizer-right" data-target="dock-right" style="display:none;"></div>
+    <aside class="dock-zone dock-col" id="dock-right" style="display:none; width:360px;"></aside>
 
   </div>
 </main>
