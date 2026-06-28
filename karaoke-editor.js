@@ -719,8 +719,9 @@ normalizeTrack(raw,forceType,name){
   if(forceType==='line'){
     if(!Array.isArray(raw)||!raw.length||!('time'in raw[0]))throw Error('bad line json');
     raw.forEach((d,i)=>{
-      const s=this.num(d.time,0),n=raw[i+1]?this.num(raw[i+1].time,s+2):s+2;
-      t.items.push({id:'L_'+this.uid(),kind:'line',start:s,end:Math.max(s+.15,n-.05),text:typeof d.line==='string'?d.line:''});
+      const s=this.num(d.time,0);
+      const e=d.end ? this.num(d.end, s+2) : (raw[i+1]?this.num(raw[i+1].time,s+2):s+2);
+      t.items.push({id:'L_'+this.uid(),kind:'line',start:s,end:Math.max(s+.15,e),text:typeof d.line==='string'?d.line:''});
     });
   }else{
     if(!Array.isArray(raw)||!raw.length||!('start'in raw[0])||!('words'in raw[0]))throw Error('bad words json');
@@ -2303,7 +2304,7 @@ renderPreview(){
   const html = Array(sz).fill('<div class="lyrics-window-line"></div>');
   for(let i=0, end=Math.min(lines.length-s, sz-pT); i<end; i++){
     const line = lines[s+i];
-    const isActive = (s+i) === idx;
+    const isActive = !inGap && (s+i) === idx;
     
     let content = this.esc(line.text);
     // Доп. фича: подсветка слов внутри активной строки для words-трека
@@ -2335,10 +2336,10 @@ exportTrack(tr){
 
 formatExportJson(json){
   if(Array.isArray(json)&&json.length&&'time'in json[0]){
-    return '[\n'+json.map(o=>`  { "time": ${o.time}, "line": ${JSON.stringify(o.line)} }`).join(',\n')+'\n]';
+    return '[\n'+json.map(o=>`  { "time": ${o.time}, "end": ${o.end||0}, "line": ${JSON.stringify(o.line)} }`).join(',\n')+'\n]';
   }
   return JSON.stringify(json,null,2);
-},
+}
 
 openExportPreviewForTrack(tr){
   try{
@@ -2369,7 +2370,7 @@ doExportTrack(tr){
 serializeTrack(tr){
   if(tr.type==='line'){
     return tr.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start)
-      .map(i=>({time:+i.start.toFixed(3),line:i.text}));
+      .map(i=>({time:+i.start.toFixed(3),end:+i.end.toFixed(3),line:i.text}));
   }
   return tr.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start).map(line=>{
     const words=tr.items.filter(i=>i.kind==='word'&&i.lineId===line.id).sort((a,b)=>a.start-b.start);
