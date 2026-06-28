@@ -434,7 +434,7 @@ _bindPanelMagnets(){
       } else {
         p.classList.remove('panel-free');
         p.style.cssText = ''; // Сброс всех инлайн стилей
-        document.getElementById('dock-bottom').appendChild(p); // Возврат в нижний док
+        document.getElementById('dock-bottom-1').appendChild(p); // По умолчанию возвращаем в первую нижнюю зону
       }
       btn.classList.toggle('active', !willBeFree);
       this.applyViewPanels();
@@ -604,34 +604,34 @@ _saveLayoutPref(key,val){
   }catch(e){console.warn('layout pref save:',e)}
 },
 
-_savePanelsOrder(){
-  const o={ states:{} };
-  ['left','right','bottom'].forEach(s=>{
-    const d=document.getElementById('dock-'+s);
-    if(!d) return;
-    o[s] = [...d.querySelectorAll('.panel')].map(p=>p.id);
-    o[s+'_dim'] = s==='bottom' ? d.style.height : d.style.width;
-  });
-  document.querySelectorAll('.panel').forEach(p => {
-    o.states[p.id] = { f: p.classList.contains('panel-free'), w: p.style.width, h: p.style.height, x: p.style.left, y: p.style.top };
-  });
-  this._saveLayoutPref('panelsOrder', o);
-},
+  _savePanelsOrder(){
+    const o={ states:{} };
+    ['left','right','bottom-1','bottom-2','bottom-3'].forEach(s=>{
+      const d=document.getElementById('dock-'+s);
+      if(!d) return;
+      o[s] = [...d.querySelectorAll('.panel')].map(p=>p.id);
+      o[s+'_dim'] = d.style.width; // Для всех зон теперь сохраняем только ширину
+    });
+    document.querySelectorAll('.panel').forEach(p => {
+      o.states[p.id] = { f: p.classList.contains('panel-free'), w: p.style.width, h: p.style.height, x: p.style.left, y: p.style.top };
+    });
+    this._saveLayoutPref('panelsOrder', o);
+  },
 
-_restoreLayoutPrefs(){
-  try{
-    const p=JSON.parse(localStorage.getItem(this.UI_KEY)||'{}'), g=k=>p['layout_'+k];
-    if(g('toolbarCompact')){ this.ui.toolbar.classList.add('compact'); this.ui.toolbarCompactBtn.textContent='▼'; }
-    if(g('toolbarOrder')) this._restoreToolbarOrder(g('toolbarOrder'));
-    if(g('panelsOrder')){
-      const po = g('panelsOrder');
-      ['left','right','bottom'].forEach(s=>{
-        const d=document.getElementById('dock-'+s);
-        if(!d) return;
-        (po[s]||[]).forEach(id=>{ const el=document.getElementById(id); if(el) d.appendChild(el); });
-        const dim=po[s+'_dim'];
-        if(dim) { if(s==='bottom') d.style.height=dim; else d.style.width=dim; }
-      });
+  _restoreLayoutPrefs(){
+    try{
+      const p=JSON.parse(localStorage.getItem(this.UI_KEY)||'{}'), g=k=>p['layout_'+k];
+      if(g('toolbarCompact')){ this.ui.toolbar.classList.add('compact'); this.ui.toolbarCompactBtn.textContent='▼'; }
+      if(g('toolbarOrder')) this._restoreToolbarOrder(g('toolbarOrder'));
+      if(g('panelsOrder')){
+        const po = g('panelsOrder');
+        ['left','right','bottom-1','bottom-2','bottom-3'].forEach(s=>{
+          const d=document.getElementById('dock-'+s);
+          if(!d) return;
+          (po[s]||[]).forEach(id=>{ const el=document.getElementById(id); if(el) d.appendChild(el); });
+          const dim=po[s+'_dim'];
+          if(dim) d.style.width=dim;
+        });
       if(po.states){
         Object.entries(po.states).forEach(([id, st]) => {
           const pEl = document.getElementById(id); if(!pEl) return;
@@ -3142,53 +3142,72 @@ togglePanelView(panel){
   this.persistUiPrefs();
 },
 
-applyViewPanels(){
-  this.ui.btnToggleInsp.classList.toggle('active-view', this.viewInsp);
-  this.ui.btnToggleLyr.classList.toggle('active-view', this.viewLyr);
+  applyViewPanels(){
+    this.ui.btnToggleInsp.classList.toggle('active-view', this.viewInsp);
+    this.ui.btnToggleLyr.classList.toggle('active-view', this.viewLyr);
 
-  const insp = document.getElementById('inspector');
-  const lyr = document.getElementById('preview-panel');
-  if(insp) insp.style.display = this.viewInsp ? 'flex' : 'none';
-  if(lyr) lyr.style.display = this.viewLyr ? 'flex' : 'none';
+    const insp = document.getElementById('inspector');
+    const lyr = document.getElementById('preview-panel');
+    if(insp) insp.style.display = this.viewInsp ? 'flex' : 'none';
+    if(lyr) lyr.style.display = this.viewLyr ? 'flex' : 'none';
 
-  ['left','right','bottom'].forEach(side=>{
-    const d=document.getElementById('dock-'+side), r=document.getElementById('resizer-'+side);
-    const wrapper=side==='bottom'?document.getElementById('bottom-wrapper'):d;
-    if(!d||!r||!wrapper) return;
-    
-    const hasPanels = Array.from(d.querySelectorAll('.panel')).some(p=>p.style.display!=='none');
-    const hasGrp = side==='bottom' ? document.getElementById('row-2').querySelector('.grp') : d.querySelector('.grp');
-    
-    if(hasPanels || hasGrp || (!this._toolbarLocked)) {
-      wrapper.style.display = 'flex'; r.style.display = 'block';
-    } else {
-      wrapper.style.display = 'none'; r.style.display = 'none';
+    ['left','right'].forEach(side=>{
+      const d=document.getElementById('dock-'+side), r=document.getElementById('resizer-'+side);
+      if(!d||!r) return;
+      const hasPanels = Array.from(d.querySelectorAll('.panel')).some(p=>p.style.display!=='none');
+      if(hasPanels || d.querySelector('.grp') || (!this._toolbarLocked)) {
+        d.style.display = 'flex'; r.style.display = 'block';
+      } else {
+        d.style.display = 'none'; r.style.display = 'none';
+      }
+    });
+
+    const bw = document.getElementById('bottom-wrapper'), rb = document.getElementById('resizer-bottom');
+    if(bw && rb){
+      const bHasPanels = ['1','2','3'].some(n => {
+        const d = document.getElementById('dock-bottom-'+n);
+        return d && Array.from(d.querySelectorAll('.panel')).some(p=>p.style.display!=='none' && !p.classList.contains('panel-free'));
+      });
+      const hasGrp = document.getElementById('row-2')?.querySelector('.grp');
+      if(bHasPanels || hasGrp || !this._toolbarLocked){
+        bw.style.display = 'flex'; rb.style.display = 'block';
+      } else {
+        bw.style.display = 'none'; rb.style.display = 'none';
+      }
+      
+      // Скрытие пустых зон внутри нижнего дока, если заблокировано
+      ['1','2','3'].forEach(n => {
+         const d = document.getElementById('dock-bottom-'+n), r = document.getElementById('resizer-b'+n);
+         const hasP = d && Array.from(d.querySelectorAll('.panel')).some(p=>p.style.display!=='none' && !p.classList.contains('panel-free'));
+         if(this._toolbarLocked && !hasP){
+           if(d) d.style.display = 'none';
+           if(r) r.style.display = 'none';
+         } else {
+           if(d) d.style.display = 'flex';
+           if(r) r.style.display = 'block';
+         }
+      });
     }
-  });
-  this.updateSplitters();
-  setTimeout(()=>this.renderRuler(), 50);
-},
 
-updateSplitters(){
-  // Очистка старых динамических разделителей
-  document.querySelectorAll('.inter-panel').forEach(el=>el.remove());
-  
-  // Создание новых разделителей между окнами внутри одного дока
-  ['left','right','bottom'].forEach(side=>{
-    const dock = document.getElementById('dock-'+side);
-    if(!dock) return;
-    // Отвязанные окна (.panel-free) больше не создают глобальных перегородок!
-    const panels = Array.from(dock.querySelectorAll('.panel')).filter(p=>p.style.display!=='none' && !p.classList.contains('panel-free'));
-    const isRow = dock.classList.contains('dock-row');
-    
-    for(let i=0; i<panels.length - 1; i++){
-      const sp = document.createElement('div');
-      sp.className = isRow ? 'resizer inter-panel' : 'resizer-h inter-panel';
-      sp.dataset.target = 'inter';
-      panels[i].after(sp);
-    }
-  });
-},
+    this.updateSplitters();
+    setTimeout(()=>this.renderRuler(), 50);
+  },
+
+  updateSplitters(){
+    document.querySelectorAll('.inter-panel').forEach(el=>el.remove());
+    ['left','right','bottom-1','bottom-2','bottom-3'].forEach(side=>{
+      const dock = document.getElementById('dock-'+side);
+      if(!dock) return;
+      const panels = Array.from(dock.querySelectorAll('.panel')).filter(p=>p.style.display!=='none' && !p.classList.contains('panel-free'));
+      const isRow = dock.classList.contains('dock-row');
+      for(let i=0; i<panels.length - 1; i++){
+        const sp = document.createElement('div');
+        sp.className = isRow ? 'resizer inter-panel' : 'resizer-h inter-panel';
+        sp.dataset.target = 'inter';
+        panels[i].after(sp);
+      }
+    });
+  },
 
 _syncUiToDOM(){
   this.ui.zoomSlider.value=this.zoom;
