@@ -414,9 +414,24 @@ _bindPanelMagnets(){
     if(!btn) return;
     btn.addEventListener('click', e => {
       if(this._toolbarLocked) return;
+      
+      const willBeFree = !p.classList.contains('panel-free');
+      if(willBeFree){
+        // Строго фиксируем текущие размеры ПЕРЕД отрывом от сетки (никаких скачков)
+        const rect = p.getBoundingClientRect();
+        p.style.width = rect.width + 'px';
+        p.style.height = rect.height + 'px';
+        p.style.flex = 'none';
+      } else {
+        // Возвращаем под контроль Flexbox
+        p.style.width = '';
+        p.style.height = '';
+        p.style.flex = '';
+      }
+      
       const isFree = p.classList.toggle('panel-free');
       btn.classList.toggle('active', !isFree);
-      if(!isFree){ p.style.width=''; p.style.height=''; p.style.flex=''; }
+      this.applyViewPanels();
       this._savePanelsOrder();
     });
   });
@@ -3133,7 +3148,8 @@ updateSplitters(){
   ['left','right','bottom'].forEach(side=>{
     const dock = document.getElementById('dock-'+side);
     if(!dock) return;
-    const panels = Array.from(dock.querySelectorAll('.panel')).filter(p=>p.style.display!=='none');
+    // Отвязанные окна (.panel-free) больше не создают глобальных перегородок!
+    const panels = Array.from(dock.querySelectorAll('.panel')).filter(p=>p.style.display!=='none' && !p.classList.contains('panel-free'));
     const isRow = dock.classList.contains('dock-row');
     
     for(let i=0; i<panels.length - 1; i++){
