@@ -170,11 +170,13 @@
         </div>
       </div>
 
-      <!-- BOTTOM DOCK -->
-      <div class="resizer-h" id="resizer-bottom" data-target="timeline-container" style="display:none;"></div>
-      <div class="dock-zone dock-row" id="dock-bottom" style="display:none; flex:1; min-height:0;">
+      <!-- BOTTOM AREA (Toolbar + Panels) -->
+      <div class="resizer-h" id="resizer-bottom" data-target="timeline-container" style="display:none; z-index:30;"></div>
+      <div id="bottom-wrapper" style="display:none; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
          <!-- Сюда падают кнопки -->
-         <div class="row row-dock" id="row-2" data-row="2" style="width:100%; min-height:36px;"></div>
+         <div class="row row-dock" id="row-2" data-row="2" style="width:100%; min-height:36px; border-bottom:1px solid var(--br); background:#15171c; flex-shrink:0;"></div>
+         <!-- Сюда падают окна (Inspector, Lyrics) -->
+         <div class="dock-zone dock-row" id="dock-bottom" style="display:flex; flex:1; min-height:0; align-items:stretch;"></div>
       </div>
     </div>
 
