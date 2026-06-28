@@ -340,7 +340,15 @@ bind(){
   document.addEventListener('mousemove',e=>this.handleGlobalMouseMove(e));
   document.addEventListener('mouseup',()=>this.handleGlobalMouseUp());
   document.addEventListener('mousedown',e=>{
-    if(e.target.classList.contains('resizer') || e.target.classList.contains('resizer-h')) this.startResize(e,e.target);
+    if(e.target.classList.contains('free-resizer')) {
+      e.preventDefault();
+      const p = e.target.closest('.panel');
+      this.floatResize = { el: p, dir: e.target.dataset.dir, startX: e.clientX, startY: e.clientY, startW: p.offsetWidth, startH: p.offsetHeight };
+      document.body.style.cursor = e.target.style.cursor;
+      e.target.classList.add('active');
+    } else if(e.target.classList.contains('resizer') || e.target.classList.contains('resizer-h')) {
+      this.startResize(e,e.target);
+    }
   });
   this.ui.scrollArea.addEventListener('contextmenu',e=>this.showContextMenu(e));
   document.addEventListener('click',e=>{
@@ -407,30 +415,28 @@ initFlexLayout(){
 
 _bindPanelMagnets(){
   document.querySelectorAll('.panel').forEach(p => {
-    if(!p.querySelector('.panel-resizer')){
-      p.insertAdjacentHTML('beforeend', `<div class="panel-resizer pr-t" data-edge="top"></div><div class="panel-resizer pr-b" data-edge="bottom"></div><div class="panel-resizer pr-l" data-edge="left"></div><div class="panel-resizer pr-r" data-edge="right"></div>`);
+    if(!p.querySelector('.fr-r')){
+      p.insertAdjacentHTML('beforeend', `<div class="free-resizer fr-r" data-dir="r"></div><div class="free-resizer fr-b" data-dir="b"></div><div class="free-resizer fr-br" data-dir="br"></div>`);
     }
     const btn = p.querySelector('.panel-magnet');
     if(!btn) return;
     btn.addEventListener('click', e => {
       if(this._toolbarLocked) return;
-      
       const willBeFree = !p.classList.contains('panel-free');
       if(willBeFree){
-        // Строго фиксируем текущие размеры ПЕРЕД отрывом от сетки (никаких скачков)
         const rect = p.getBoundingClientRect();
+        p.classList.add('panel-free');
+        document.body.appendChild(p); // Вырываем из дока!
+        p.style.left = rect.left + 'px';
+        p.style.top = rect.top + 'px';
         p.style.width = rect.width + 'px';
         p.style.height = rect.height + 'px';
-        p.style.flex = 'none';
       } else {
-        // Возвращаем под контроль Flexbox
-        p.style.width = '';
-        p.style.height = '';
-        p.style.flex = '';
+        p.classList.remove('panel-free');
+        p.style.cssText = ''; // Сброс всех инлайн стилей
+        document.getElementById('dock-bottom').appendChild(p); // Возврат в нижний док
       }
-      
-      const isFree = p.classList.toggle('panel-free');
-      btn.classList.toggle('active', !isFree);
+      btn.classList.toggle('active', !willBeFree);
       this.applyViewPanels();
       this._savePanelsOrder();
     });
@@ -441,8 +447,15 @@ _bindPanelDragDrop(){
   document.querySelectorAll('.panel').forEach(p=>{
     const h3 = p.querySelector('h3');
     if(h3) {
-      // Изолируем draggable только на момент удержания заголовка, чтобы не ломать логику
-      h3.onmousedown = () => p.setAttribute('draggable', 'true');
+      h3.onmousedown = (e) => {
+        if(p.classList.contains('panel-free')){
+          // Начинаем свободное перемещение
+          this.floatMove = { el: p, startX: e.clientX, startY: e.clientY, initX: p.offsetLeft, initY: p.offsetTop };
+        } else {
+          // Стандартный Drag&Drop для док-станций
+          p.setAttribute('draggable', 'true');
+        }
+      };
       h3.onmouseup = () => p.removeAttribute('draggable');
       h3.onmouseleave = () => p.removeAttribute('draggable');
     }
@@ -600,7 +613,7 @@ _savePanelsOrder(){
     o[s+'_dim'] = s==='bottom' ? d.style.height : d.style.width;
   });
   document.querySelectorAll('.panel').forEach(p => {
-    o.states[p.id] = { f: p.classList.contains('panel-free'), w: p.style.width, h: p.style.height };
+    o.states[p.id] = { f: p.classList.contains('panel-free'), w: p.style.width, h: p.style.height, x: p.style.left, y: p.style.top };
   });
   this._saveLayoutPref('panelsOrder', o);
 },
@@ -622,13 +635,16 @@ _restoreLayoutPrefs(){
       if(po.states){
         Object.entries(po.states).forEach(([id, st]) => {
           const pEl = document.getElementById(id); if(!pEl) return;
-          pEl.classList.toggle('panel-free', st.f);
+          const isFree = st.f;
+          pEl.classList.toggle('panel-free', isFree);
           const btn = pEl.querySelector('.panel-magnet');
-          if(btn) btn.classList.toggle('active', !st.f);
-          if(st.f){ 
-            pEl.style.width = st.w||''; 
-            pEl.style.height = st.h||''; 
-            pEl.style.flex = 'none'; 
+          if(btn) btn.classList.toggle('active', !isFree);
+          if(isFree){ 
+            document.body.appendChild(pEl);
+            pEl.style.left = st.x || '100px'; 
+            pEl.style.top = st.y || '100px'; 
+            pEl.style.width = st.w || '400px'; 
+            pEl.style.height = st.h || '300px'; 
           }
         });
       }
@@ -1649,6 +1665,17 @@ handleTimelineMouseDown(e){
 },
 
 handleGlobalMouseMove(e){
+  if(this.floatMove){
+    this.floatMove.el.style.left = (this.floatMove.initX + e.clientX - this.floatMove.startX) + 'px';
+    this.floatMove.el.style.top = (this.floatMove.initY + e.clientY - this.floatMove.startY) + 'px';
+    return;
+  }
+  if(this.floatResize){
+    const { el, dir, startX, startY, startW, startH } = this.floatResize;
+    if(dir.includes('r')) el.style.width = Math.max(250, startW + (e.clientX - startX)) + 'px';
+    if(dir.includes('b')) el.style.height = Math.max(150, startH + (e.clientY - startY)) + 'px';
+    return;
+  }
   if(this.playheadDrag.active){this.handlePlayheadDragMove(e);return}
   if(this.charDrag.active){this.handleCharDragMove(e);return}
   if(this._loopDrag?.active){this.handleLoopDragMove(e);return}
@@ -1768,6 +1795,14 @@ handleMarqueeMove(e){
 },
 
 handleGlobalMouseUp(){
+  if(this.floatMove){ this.floatMove = null; this._savePanelsOrder(); return; }
+  if(this.floatResize){
+    this.floatResize.el.querySelector('.free-resizer.active')?.classList.remove('active');
+    document.body.style.cursor='';
+    this.floatResize = null;
+    this._savePanelsOrder();
+    return;
+  }
   this.hideDragModeBadge();
   if(this.playheadDrag.active){
     this.playheadDrag.active=false;document.body.style.cursor='';
@@ -3043,16 +3078,6 @@ startResize(e, el){
 
 handleResize(e){
   const {target, startX, startY, startDim, el, isInter} = this.resize;
-  
-  if(target==='p-edge'){
-    const {p, edge, startW, startH} = this.resize;
-    if(edge==='right') p.style.width=Math.max(120,startW+(e.clientX-startX))+'px';
-    if(edge==='left') p.style.width=Math.max(120,startW-(e.clientX-startX))+'px';
-    if(edge==='bottom') p.style.height=Math.max(80,startH+(e.clientY-startY))+'px';
-    if(edge==='top') p.style.height=Math.max(80,startH-(e.clientY-startY))+'px';
-    return;
-  }
-
   const tEl = isInter ? el.previousElementSibling : document.getElementById(target);
   if(!tEl) return;
 
