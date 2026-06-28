@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 17:40:09 UTC
+Сгенерировано: 2026-06-28 17:45:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1126,9 +1126,8 @@ cache(){
     tracksContainer:g('tracks-container'),trackHeaders:g('track-headers'),
     playhead:g('playhead'),playheadHandle:g('playhead-handle'),
     loopRegion:g('loop-region'),selectionBox:g('selection-box'),
-    sidebar:g('sidebar'),sidebarResizer:g('sidebar-resizer'),
     inspectorPanel:g('inspector'),inspectorContent:g('inspector-content'),
-    previewResizer:g('preview-resizer'),lyricsContainer:g('lyrics-container'),
+    lyricsContainer:g('lyrics-container'),
     btnLyrMode:g('btn-lyr-mode'),btnLyrAnim:g('btn-lyr-anim'),
     lyricsWindow:g('lyrics-window'),lyricsBg:g('lyrics-bg'),
     contextMenu:g('context-menu'),
@@ -1166,10 +1165,6 @@ cache(){
     pasteTextArea:g('paste-text-area'),btnPasteImport:g('btn-paste-import'),btnPasteCancel:g('btn-paste-cancel'),
     loader:g('loader'),audioPlayer:g('audio-player'),
     workspace:g('workspace'),workspaceMain:g('workspace-main'),
-    timelineResizer:g('timeline-resizer'),
-    sidebarCollapseBtn:g('sidebar-collapse-btn'),
-    inspectorCollapseBtn:g('inspector-collapse-btn'),
-    previewCollapseBtn:g('preview-collapse-btn'),
     inspectorBody:g('inspector-body'),previewBody:g('preview-body'),
     previewPanel:g('preview-panel'),
     btnToggleInsp:g('btn-toggle-insp'),btnToggleLyr:g('btn-toggle-lyr'),btnResetLayout:g('btn-reset-layout'),
@@ -1388,8 +1383,9 @@ bind(){
   this.ui.playheadHandle.addEventListener('mousedown',e=>this.startPlayheadDrag(e));
   document.addEventListener('mousemove',e=>this.handleGlobalMouseMove(e));
   document.addEventListener('mouseup',()=>this.handleGlobalMouseUp());
-  this.ui.sidebarResizer.addEventListener('mousedown',e=>this.startResize(e,'sidebar'));
-  this.ui.previewResizer.addEventListener('mousedown',e=>this.startResize(e,'preview'));
+  document.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('resizer') || e.target.classList.contains('resizer-h')) this.startResize(e,e.target);
+  });
   this.ui.scrollArea.addEventListener('contextmenu',e=>this.showContextMenu(e));
   document.addEventListener('click',e=>{
     if(!e.target.closest('#context-menu'))this.ui.contextMenu.classList.add('hidden');
@@ -1445,55 +1441,37 @@ bind(){
 
 /* ─── flexible layout engine ─────────────────────────────────────── */
 initFlexLayout(){
-  this._bindTimelineResizer();
-  this._bindSidebarCollapse();
-  this._bindPanelCollapse();
+  this._bindPanelDragDrop();
   this._bindToolbarCompact();
-  this._restoreLayoutPrefs();
   this._bindToolbarGroupDrag();
+  this._restoreLayoutPrefs();
+  this.applyViewPanels();
 },
 
-_bindTimelineResizer(){
-  const el=this.ui.timelineResizer,wm=this.ui.workspaceMain;
-  let startY=0,startH=0,active=false;
-  el.addEventListener('mousedown',e=>{
-    e.preventDefault();active=true;startY=e.clientY;
-    startH=wm.offsetHeight;
-    document.body.style.cursor='row-resize';
-    el.classList.add('active');
-  });
-  document.addEventListener('mousemove',e=>{
-    if(!active)return;
-    const h=Math.max(160,Math.min(window.innerHeight-60,startH+(e.clientY-startY)));
-    wm.style.flex='none';wm.style.height=h+'px';
-    this.renderRuler();
-    this._saveLayoutPref('workspaceH',h);
-  });
-  document.addEventListener('mouseup',()=>{
-    if(active){active=false;document.body.style.cursor='';el.classList.remove('active')}
-  });
-},
-
-_bindSidebarCollapse(){
-  const btn=this.ui.sidebarCollapseBtn,sb=this.ui.sidebar;
-  btn.addEventListener('click',()=>{
-    const collapsed=sb.classList.toggle('collapsed-sidebar');
-    btn.textContent=collapsed?'▶':'◀';
-    this._saveLayoutPref('sidebarCollapsed',collapsed);
-    setTimeout(()=>this.renderRuler(),160);
-  });
-},
-
-_bindPanelCollapse(){
-  const setup=(btn,panel,body,key)=>{
-    btn.addEventListener('click',()=>{
-      const col=panel.classList.toggle('panel-collapsed');
-      btn.textContent=col?'▼':'▲';
-      this._saveLayoutPref(key,col);
+_bindPanelDragDrop(){
+  document.querySelectorAll('.panel').forEach(p=>{
+    p.addEventListener('dragstart',e=>{
+      if(this._toolbarLocked) { e.preventDefault(); return; }
+      if(!e.target.closest('h3')) { e.preventDefault(); return; }
+      e.dataTransfer.setData('panel-id', p.id);
+      setTimeout(()=>p.classList.add('dragging-panel'),0);
     });
-  };
-  setup(this.ui.inspectorCollapseBtn,this.ui.inspectorPanel,this.ui.inspectorBody,'inspectorCollapsed');
-  setup(this.ui.previewCollapseBtn,this.ui.previewPanel,this.ui.previewBody,'previewCollapsed');
+    p.addEventListener('dragend',()=>p.classList.remove('dragging-panel'));
+  });
+
+  document.querySelectorAll('.dock-zone').forEach(z=>{
+    z.addEventListener('dragover',e=>{
+      if(this._toolbarLocked || !e.dataTransfer.types.includes('panel-id')) return;
+      e.preventDefault(); z.classList.add('drag-over-dock');
+    });
+    z.addEventListener('dragleave',()=>z.classList.remove('drag-over-dock'));
+    z.addEventListener('drop',e=>{
+      e.preventDefault(); z.classList.remove('drag-over-dock');
+      const pid = e.dataTransfer.getData('panel-id');
+      const p = document.getElementById(pid);
+      if(p){ z.appendChild(p); this.applyViewPanels(); this._savePanelsOrder(); }
+    });
+  });
 },
 
 _bindToolbarCompact(){
@@ -1509,7 +1487,7 @@ _bindToolbarGroupDrag(){
   this._tbDrag = { el: null, placeholder: null };
   const rows=document.querySelectorAll('.row');
   rows.forEach(row=>this._setupRowDragDrop(row));
-  this._applyToolbarLock(this._toolbarLocked!==false); // по умолчанию locked
+  this._applyToolbarLock(this._toolbarLocked!==false);
   this.ui.toolbarLockBtn.addEventListener('click',()=>{
     this._applyToolbarLock(!this._toolbarLocked);
     this._saveLayoutPref('toolbarLocked',this._toolbarLocked);
@@ -1519,12 +1497,14 @@ _bindToolbarGroupDrag(){
 _applyToolbarLock(locked){
   this._toolbarLocked=locked;
   this.ui.toolbar.classList.toggle('tb-locked',locked);
+  document.body.classList.toggle('tb-locked',locked); // Глобальный класс для CSS
   this.ui.toolbarLockBtn.textContent=locked?'🔒':'🔓';
   this.ui.toolbarLockBtn.classList.toggle('unlocked',!locked);
-  this.ui.toolbarLockBtn.title=locked?'Разблокировать перемещение кнопок':'Заблокировать перемещение кнопок';
+  this.ui.toolbarLockBtn.title=locked?'Разблокировать перемещение окон и кнопок':'Заблокировать перемещение окон и кнопок';
   document.querySelectorAll('.grp[data-grp]').forEach(g=>{
     if(locked)g.removeAttribute('draggable');else g.setAttribute('draggable','true');
   });
+  this.applyViewPanels();
 },
 
 _setupRowDragDrop(row){
@@ -1605,41 +1585,35 @@ _saveLayoutPref(key,val){
   }catch(e){console.warn('layout pref save:',e)}
 },
 
+_savePanelsOrder(){
+  const o={};
+  ['left','right','bottom'].forEach(s=>{
+    const d=document.getElementById('dock-'+s);
+    if(!d) return;
+    o[s] = [...d.querySelectorAll('.panel')].map(p=>p.id);
+    o[s+'_dim'] = s==='bottom' ? d.style.height : d.style.width;
+  });
+  this._saveLayoutPref('panelsOrder', o);
+},
+
 _restoreLayoutPrefs(){
   try{
-    const p=JSON.parse(localStorage.getItem(this.UI_KEY)||'{}');
-    const g=k=>p['layout_'+k];
-
-    // Toolbar compact
-    if(g('toolbarCompact')){
-      this.ui.toolbar.classList.add('compact');
-      this.ui.toolbarCompactBtn.textContent='▼';
+    const p=JSON.parse(localStorage.getItem(this.UI_KEY)||'{}'), g=k=>p['layout_'+k];
+    if(g('toolbarCompact')){ this.ui.toolbar.classList.add('compact'); this.ui.toolbarCompactBtn.textContent='▼'; }
+    if(g('toolbarOrder')) this._restoreToolbarOrder(g('toolbarOrder'));
+    if(g('panelsOrder')){
+      ['left','right','bottom'].forEach(s=>{
+        const d=document.getElementById('dock-'+s);
+        if(!d) return;
+        (g('panelsOrder')[s]||[]).forEach(id=>{
+          const el=document.getElementById(id); if(el) d.appendChild(el);
+        });
+        const dim=g('panelsOrder')[s+'_dim'];
+        if(dim) { if(s==='bottom') d.style.height=dim; else d.style.width=dim; }
+      });
     }
-    // Toolbar group order
-    if(g('toolbarOrder'))this._restoreToolbarOrder(g('toolbarOrder'));
-    // Toolbar lock (default true)
-    this._toolbarLocked=g('toolbarLocked')!==false;
-    // Sidebar collapsed
-    if(g('sidebarCollapsed')){
-      this.ui.sidebar.classList.add('collapsed-sidebar');
-      this.ui.sidebarCollapseBtn.textContent='▶';
-    }
-    // Panel collapsed states
-    if(g('inspectorCollapsed')){
-      this.ui.inspectorPanel.classList.add('panel-collapsed');
-      this.ui.inspectorCollapseBtn.textContent='▼';
-    }
-    if(g('previewCollapsed')){
-      this.ui.previewPanel.classList.add('panel-collapsed');
-      this.ui.previewCollapseBtn.textContent='▼';
-    }
-    // Workspace height
-    const wh=g('workspaceH');
-    if(wh){
-      this.ui.workspaceMain.style.flex='none';
-      this.ui.workspaceMain.style.height=wh+'px';
-    }
-  }catch(e){console.warn('layout restore:',e)}
+    this._toolbarLocked = g('toolbarLocked')!==false;
+  }catch(e){}
 },
 
 /* ─── audio ──────────────────────────────────────────────────────── */
@@ -2804,7 +2778,7 @@ handleGlobalMouseUp(){
   if(this.resize.active){
     this.resize.active=false;document.body.style.cursor='';
     this.resize.el?.classList.remove('active');
-    this.persistUiPrefs();
+    this._savePanelsOrder();
   }
 },
 
@@ -4017,23 +3991,29 @@ autoFixOverlaps(){
 },
 
 /* ─── resizer ────────────────────────────────────────────────────── */
-startResize(e,target){
+startResize(e, el){
+  if(this._toolbarLocked) return;
   e.preventDefault();
-  const el=target==='sidebar'?this.ui.sidebarResizer:this.ui.previewResizer;
-  el?.classList.add('active');
-  this.resize={active:true,target,startX:e.clientX,startY:e.clientY,el,
-    startDim:target==='sidebar'?this.ui.sidebar.offsetWidth:this.ui.inspectorPanel.offsetHeight};
-  document.body.style.cursor=target==='sidebar'?'col-resize':'row-resize';
+  const target=el.dataset.target, dock=document.getElementById(target);
+  if(!dock)return;
+  el.classList.add('active');
+  this.resize={active:true, target, startX:e.clientX, startY:e.clientY, el,
+    startDim: target==='dock-bottom' ? dock.offsetHeight : dock.offsetWidth};
+  document.body.style.cursor = target==='dock-bottom' ? 'row-resize' : 'col-resize';
 },
 
 handleResize(e){
   const {target,startX,startY,startDim}=this.resize;
-  if(target==='sidebar'){
-    this.ui.sidebar.style.width=Math.max(260,Math.min(820,startDim-(e.clientX-startX)))+'px';
-  }else{
-    const h=Math.max(130,Math.min(600,startDim+(e.clientY-startY)));
-    this.ui.inspectorPanel.style.flex='none';this.ui.inspectorPanel.style.height=h+'px';
+  const dock=document.getElementById(target);
+  if(!dock) return;
+  if(target==='dock-right'){
+    dock.style.width=Math.max(200,Math.min(800,startDim-(e.clientX-startX)))+'px';
+  }else if(target==='dock-left'){
+    dock.style.width=Math.max(200,Math.min(800,startDim+(e.clientX-startX)))+'px';
+  }else if(target==='dock-bottom'){
+    dock.style.height=Math.max(100,Math.min(600,startDim-(e.clientY-startY)))+'px';
   }
+  this.renderRuler();
 },
 
 /* ─── history ────────────────────────────────────────────────────── */
@@ -4086,13 +4066,23 @@ togglePanelView(panel){
 applyViewPanels(){
   this.ui.btnToggleInsp.classList.toggle('active-view', this.viewInsp);
   this.ui.btnToggleLyr.classList.toggle('active-view', this.viewLyr);
-  this.ui.inspectorPanel.style.display = this.viewInsp ? 'flex' : 'none';
-  this.ui.previewPanel.style.display = this.viewLyr ? 'flex' : 'none';
-  this.ui.previewResizer.style.display = (this.viewInsp && this.viewLyr) ? 'block' : 'none';
 
-  const anyVis = this.viewInsp || this.viewLyr;
-  this.ui.sidebar.style.display = anyVis ? 'flex' : 'none';
-  this.ui.sidebarResizer.style.display = anyVis ? 'block' : 'none';
+  const insp = document.getElementById('inspector');
+  const lyr = document.getElementById('preview-panel');
+  if(insp) insp.style.display = this.viewInsp ? 'flex' : 'none';
+  if(lyr) lyr.style.display = this.viewLyr ? 'flex' : 'none';
+
+  ['left','right','bottom'].forEach(side=>{
+    const d=document.getElementById('dock-'+side), r=document.getElementById('resizer-'+side);
+    if(!d||!r) return;
+    const hasPanels = Array.from(d.querySelectorAll('.panel')).some(p=>p.style.display!=='none');
+    const hasGrp = d.querySelector('.grp');
+    if(hasPanels || hasGrp || (!this._toolbarLocked)) {
+      d.style.display = 'flex'; r.style.display = 'block';
+    } else {
+      d.style.display = 'none'; r.style.display = 'none';
+    }
+  });
   setTimeout(()=>this.renderRuler(), 50);
 },
 
