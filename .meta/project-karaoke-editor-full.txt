@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 20:32:52 UTC
+Сгенерировано: 2026-06-28 20:33:34 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1694,7 +1694,11 @@ _restoreLayoutPrefs(){
           pEl.classList.toggle('panel-free', st.f);
           const btn = pEl.querySelector('.panel-magnet');
           if(btn) btn.classList.toggle('active', !st.f);
-          if(st.f){ pEl.style.width = st.w||''; pEl.style.height = st.h||''; }
+          if(st.f){ 
+            pEl.style.width = st.w||''; 
+            pEl.style.height = st.h||''; 
+            pEl.style.flex = 'none'; 
+          }
         });
       }
     }
