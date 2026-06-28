@@ -3063,13 +3063,16 @@ applyViewPanels(){
 
   ['left','right','bottom'].forEach(side=>{
     const d=document.getElementById('dock-'+side), r=document.getElementById('resizer-'+side);
-    if(!d||!r) return;
+    const wrapper=side==='bottom'?document.getElementById('bottom-wrapper'):d;
+    if(!d||!r||!wrapper) return;
+    
     const hasPanels = Array.from(d.querySelectorAll('.panel')).some(p=>p.style.display!=='none');
-    const hasGrp = d.querySelector('.grp');
+    const hasGrp = side==='bottom' ? document.getElementById('row-2').querySelector('.grp') : d.querySelector('.grp');
+    
     if(hasPanels || hasGrp || (!this._toolbarLocked)) {
-      d.style.display = 'flex'; r.style.display = 'block';
+      wrapper.style.display = 'flex'; r.style.display = 'block';
     } else {
-      d.style.display = 'none'; r.style.display = 'none';
+      wrapper.style.display = 'none'; r.style.display = 'none';
     }
   });
   this.updateSplitters();
