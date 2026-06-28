@@ -397,11 +397,29 @@ bind(){
 
 /* ─── flexible layout engine ─────────────────────────────────────── */
 initFlexLayout(){
+  this._bindPanelMagnets();
   this._bindPanelDragDrop();
   this._bindToolbarCompact();
   this._bindToolbarGroupDrag();
   this._restoreLayoutPrefs();
   this.applyViewPanels();
+},
+
+_bindPanelMagnets(){
+  document.querySelectorAll('.panel').forEach(p => {
+    if(!p.querySelector('.panel-resizer')){
+      p.insertAdjacentHTML('beforeend', `<div class="panel-resizer pr-t" data-edge="top"></div><div class="panel-resizer pr-b" data-edge="bottom"></div><div class="panel-resizer pr-l" data-edge="left"></div><div class="panel-resizer pr-r" data-edge="right"></div>`);
+    }
+    const btn = p.querySelector('.panel-magnet');
+    if(!btn) return;
+    btn.addEventListener('click', e => {
+      if(this._toolbarLocked) return;
+      const isFree = p.classList.toggle('panel-free');
+      btn.classList.toggle('active', !isFree);
+      if(!isFree){ p.style.width=''; p.style.height=''; p.style.flex=''; }
+      this._savePanelsOrder();
+    });
+  });
 },
 
 _bindPanelDragDrop(){
@@ -434,10 +452,12 @@ _bindPanelDragDrop(){
     z.addEventListener('drop',e=>{
       e.preventDefault(); z.classList.remove('drag-over-dock');
       if(this._dragPanel){ 
-        // Сбрасываем жесткие размеры из старого дока, чтобы Flexbox работал идеально
-        this._dragPanel.style.width = '';
-        this._dragPanel.style.height = '';
-        this._dragPanel.style.flex = '';
+        // Сбрасываем жесткие размеры только если окно примагничено (не плавает)
+        if(!this._dragPanel.classList.contains('panel-free')){
+          this._dragPanel.style.width = '';
+          this._dragPanel.style.height = '';
+          this._dragPanel.style.flex = '';
+        }
         z.appendChild(this._dragPanel); 
         this.applyViewPanels(); this._savePanelsOrder(); 
       }
@@ -557,12 +577,15 @@ _saveLayoutPref(key,val){
 },
 
 _savePanelsOrder(){
-  const o={};
+  const o={ states:{} };
   ['left','right','bottom'].forEach(s=>{
     const d=document.getElementById('dock-'+s);
     if(!d) return;
     o[s] = [...d.querySelectorAll('.panel')].map(p=>p.id);
     o[s+'_dim'] = s==='bottom' ? d.style.height : d.style.width;
+  });
+  document.querySelectorAll('.panel').forEach(p => {
+    o.states[p.id] = { f: p.classList.contains('panel-free'), w: p.style.width, h: p.style.height };
   });
   this._saveLayoutPref('panelsOrder', o);
 },
@@ -573,15 +596,23 @@ _restoreLayoutPrefs(){
     if(g('toolbarCompact')){ this.ui.toolbar.classList.add('compact'); this.ui.toolbarCompactBtn.textContent='▼'; }
     if(g('toolbarOrder')) this._restoreToolbarOrder(g('toolbarOrder'));
     if(g('panelsOrder')){
+      const po = g('panelsOrder');
       ['left','right','bottom'].forEach(s=>{
         const d=document.getElementById('dock-'+s);
         if(!d) return;
-        (g('panelsOrder')[s]||[]).forEach(id=>{
-          const el=document.getElementById(id); if(el) d.appendChild(el);
-        });
-        const dim=g('panelsOrder')[s+'_dim'];
+        (po[s]||[]).forEach(id=>{ const el=document.getElementById(id); if(el) d.appendChild(el); });
+        const dim=po[s+'_dim'];
         if(dim) { if(s==='bottom') d.style.height=dim; else d.style.width=dim; }
       });
+      if(po.states){
+        Object.entries(po.states).forEach(([id, st]) => {
+          const pEl = document.getElementById(id); if(!pEl) return;
+          pEl.classList.toggle('panel-free', st.f);
+          const btn = pEl.querySelector('.panel-magnet');
+          if(btn) btn.classList.toggle('active', !st.f);
+          if(st.f){ pEl.style.width = st.w||''; pEl.style.height = st.h||''; }
+        });
+      }
     }
     this._toolbarLocked = g('toolbarLocked')!==false;
   }catch(e){}
@@ -2970,6 +3001,13 @@ autoFixOverlaps(){
 /* ─── resizer ────────────────────────────────────────────────────── */
 startResize(e, el){
   e.preventDefault();
+  if(el.classList.contains('panel-resizer')){
+    const p = el.closest('.panel'); el.classList.add('active');
+    this.resize={ active:true, target:'p-edge', el, p, edge:el.dataset.edge, startX:e.clientX, startY:e.clientY, startW:p.offsetWidth, startH:p.offsetHeight };
+    document.body.style.cursor = (el.dataset.edge==='top'||el.dataset.edge==='bottom')?'row-resize':'col-resize';
+    return;
+  }
+  
   const isInter = el.classList.contains('inter-panel');
   const target = isInter ? 'inter' : el.dataset.target;
   const tEl = isInter ? el.previousElementSibling : document.getElementById(target);
@@ -2986,19 +3024,27 @@ startResize(e, el){
 
 handleResize(e){
   const {target, startX, startY, startDim, el, isInter} = this.resize;
+  
+  if(target==='p-edge'){
+    const {p, edge, startW, startH} = this.resize;
+    if(edge==='right') p.style.width=Math.max(120,startW+(e.clientX-startX))+'px';
+    if(edge==='left') p.style.width=Math.max(120,startW-(e.clientX-startX))+'px';
+    if(edge==='bottom') p.style.height=Math.max(80,startH+(e.clientY-startY))+'px';
+    if(edge==='top') p.style.height=Math.max(80,startH-(e.clientY-startY))+'px';
+    return;
+  }
+
   const tEl = isInter ? el.previousElementSibling : document.getElementById(target);
   if(!tEl) return;
 
   if(el.classList.contains('resizer-h')){
-    // Для таймлайна и смежных окон движение вниз = увеличение высоты
     const diff = e.clientY - startY; 
     tEl.style.flex = 'none';
     tEl.style.height = Math.max(40, startDim + diff) + 'px';
     if(target === 'timeline-container') this._manualTimelineH = Math.max(80, startDim + diff);
   }else{
-    // По умолчанию сдвиг вправо увеличивает ширину
     let diff = e.clientX - startX;
-    if(target === 'dock-right' && !isInter) diff = startX - e.clientX; // Правый док инвертирован
+    if(target === 'dock-right' && !isInter) diff = startX - e.clientX;
     tEl.style.flex = 'none';
     tEl.style.width = Math.max(100, startDim + diff) + 'px';
   }
