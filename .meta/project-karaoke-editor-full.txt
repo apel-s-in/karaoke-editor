@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 18:22:13 UTC
+Сгенерировано: 2026-06-28 18:23:01 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -842,6 +842,7 @@ body.tb-locked .dock-zone:empty, body.tb-locked .row-dock:empty{display:none !im
           <div id="inspector-content"><p class="muted">Select element(s)</p></div>
         </div>
       </section>
+      <div class="resizer-h inter-panel" id="preview-resizer" data-target="inspector" style="display:block; z-index:25;"></div>
       <section class="panel panel2" id="preview-panel" draggable="true">
         <h3 title="Перетащить окно">
           Lyrics Preview
