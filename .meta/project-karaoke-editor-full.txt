@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 15:27:00 UTC
+Сгенерировано: 2026-06-28 15:57:54 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -847,8 +847,10 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
 <!-- Context Menu -->
 <div id="context-menu" class="ctx hidden">
   <div class="ctx-item" id="ctx-edit">✏ Edit Text</div>
+  <div class="ctx-item" id="ctx-copy">📋 Copy</div>
+  <div class="ctx-item" id="ctx-paste">📋 Paste</div>
+  <div class="ctx-sep"></div>
   <div class="ctx-item" id="ctx-split">✂ Split at Playhead</div>
-  <div class="ctx-item" id="ctx-split-cursor">✂ Split By Cursor</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" id="ctx-merge-prev">⊲ Merge With Prev</div>
   <div class="ctx-item" id="ctx-merge-next">Merge With Next ⊳</div>
@@ -866,6 +868,7 @@ input[type=color]{width:36px;height:24px;padding:1px;border-radius:4px;border:1p
   <div class="ctx-item" id="ctx-scroll-selection">↔ Scroll to Selection</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" id="ctx-sel-track">☰ Select All in Track</div>
+  <div class="ctx-item" id="ctx-invert">◧ Invert Selection</div>
   <div class="ctx-item" id="ctx-delete">🗑 Delete</div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" id="ctx-delete-track">🗑 Delete Entire Track</div>
