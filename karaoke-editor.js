@@ -434,6 +434,10 @@ _bindPanelDragDrop(){
     z.addEventListener('drop',e=>{
       e.preventDefault(); z.classList.remove('drag-over-dock');
       if(this._dragPanel){ 
+        // Сбрасываем жесткие размеры из старого дока, чтобы Flexbox работал идеально
+        this._dragPanel.style.width = '';
+        this._dragPanel.style.height = '';
+        this._dragPanel.style.flex = '';
         z.appendChild(this._dragPanel); 
         this.applyViewPanels(); this._savePanelsOrder(); 
       }
