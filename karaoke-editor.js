@@ -2270,22 +2270,29 @@ renderPreview(){
   const lines=tr.items.filter(i=>i.kind==='line').sort((a,b)=>a.start-b.start);
   if(!lines.length){this.ui.lyricsContainer.innerHTML='<div class="lyrics-placeholder">Нет данных</div>';return}
 
-  // Оригинальная логика таймера обратного отсчета (VI3NA1BITA-MUSIC MATCH)
-  const fT = lines[0].start;
-  if (t < fT && fT > 5) {
-    const rem = fT - t, sec = Math.ceil(rem);
-    // Кэшируем стейт, чтобы не ломать CSS-пульсацию частыми обновлениями innerHTML
-    if (this._previewLastIdx === -sec && rem >= 1) return;
-    this.ui.lyricsContainer.innerHTML = `<div class="lyrics-countdown${rem<1?' fade-out':''}"${rem<1?` style="opacity:${rem.toFixed(2)}"`:''}>${sec}</div>`;
-    this._previewLastIdx = -sec;
-    return;
-  }
-  this._previewLastIdx = null; // сброс для обычного рендера текста
-
   // Находим текущую строку по логике основного плеера:
-  // активна, пока не началась следующая.
   let idx = -1;
   for (let i=0; i<lines.length && t>=lines[i].start; i++) idx = i;
+
+  // Универсальная логика таймера для всех пустых промежутков > 5 сек
+  const curLine = idx >= 0 ? lines[idx] : null;
+  const nextLine = idx + 1 < lines.length ? lines[idx + 1] : null;
+  const inGap = !curLine || t >= curLine.end;
+
+  if (inGap) {
+    const gapStart = curLine ? curLine.end : 0;
+    const gapEnd = nextLine ? nextLine.start : (this.duration || this.effDuration() || gapStart + 10);
+    
+    if (gapEnd - gapStart > 5 && t >= gapStart && t < gapEnd) {
+      const rem = gapEnd - t;
+      const sec = Math.ceil(rem);
+      if (this._previewLastIdx === -sec && rem >= 1) return;
+      this.ui.lyricsContainer.innerHTML = `<div class="lyrics-countdown${rem<1?' fade-out':''}"${rem<1?` style="opacity:${rem.toFixed(2)}"`:''}>${sec}</div>`;
+      this._previewLastIdx = -sec;
+      return;
+    }
+  }
+  this._previewLastIdx = null;
 
   // Логика "окошка" центрирования
   const sz = this.previewMode === 'expanded' ? 9 : 5;
@@ -2326,12 +2333,19 @@ exportTrack(tr){
   this.openExportPreviewForTrack(tr);
 },
 
+formatExportJson(json){
+  if(Array.isArray(json)&&json.length&&'time'in json[0]){
+    return '[\n'+json.map(o=>`  { "time": ${o.time}, "line": ${JSON.stringify(o.line)} }`).join(',\n')+'\n]';
+  }
+  return JSON.stringify(json,null,2);
+},
+
 openExportPreviewForTrack(tr){
   try{
     const normalized=this.normalizeTrackForExport(tr);
     const json=this.serializeTrack(normalized);
     this._exportPreviewTrack=tr;
-    this.ui.exportPreviewText.value=JSON.stringify(json,null,2);
+    this.ui.exportPreviewText.value=this.formatExportJson(json);
     this.ui.exportPreviewModal.classList.remove('hidden');
   }catch(e){alert('Ошибка подготовки экспорта: '+e.message)}
 },
@@ -2347,7 +2361,7 @@ doExportTrack(tr){
   try{
     const normalized=this.normalizeTrackForExport(tr);
     const json=this.serializeTrack(normalized);
-    this.downloadBlob(new Blob([JSON.stringify(json,null,2)],{type:'application/json'}),tr.name+'_export.json');
+    this.downloadBlob(new Blob([this.formatExportJson(json)],{type:'application/json'}),tr.name+'_export.json');
     this.ui.exportPreviewModal.classList.add('hidden');
   }catch(e){alert('Ошибка экспорта: '+e.message)}
 },
