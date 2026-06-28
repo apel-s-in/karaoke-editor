@@ -46,7 +46,7 @@ karaoke-editor/
 ├── karaoke-editor.html
 └── karaoke-editor.js
 
-Сгенерировано: 2026-06-28 16:16:52 UTC
+Сгенерировано: 2026-06-28 16:18:20 UTC
 
 //=================================================
 // FILE: /.github/workflows/generate-context.yml
@@ -1041,6 +1041,7 @@ MIN_DUR:.02,
 /* ─── state ──────────────────────────────────────────────────────── */
 audioCtx:null,audioBuffer:null,audioElement:null,duration:0,audioFileName:'audio',
 zoom:80,verticalZoom:1,snapStep:0,autoScroll:true,volume:1,muted:false,dirty:false,playbackRate:1,
+viewInsp:true,viewLyr:true,
 autosaveEnabled:true,autosaveIntervalSec:30,autosaveTimer:null,
 project:{version:2,tracks:[],activeTrackId:null},
 selected:{trackId:null,ids:new Set()},
@@ -1156,6 +1157,7 @@ cache(){
     previewCollapseBtn:g('preview-collapse-btn'),
     inspectorBody:g('inspector-body'),previewBody:g('preview-body'),
     previewPanel:g('preview-panel'),
+    btnToggleInsp:g('btn-toggle-insp'),btnToggleLyr:g('btn-toggle-lyr'),
     toolbarCompactBtn:g('toolbar-compact-btn'),
     toolbarLockBtn:g('toolbar-lock-btn'),
     toolbar:g('toolbar'),toolbarRows:g('toolbar-rows')
@@ -1343,6 +1345,8 @@ bind(){
   this.ui.autosaveInterval.onchange=e=>{this.autosaveIntervalSec=+e.target.value;this.persistUiPrefs();this.restartAutosaveLoop()};
   this.ui.volumeSlider.oninput=e=>this.setVolume(+e.target.value/100);
   this.ui.btnMute.onclick=()=>this.toggleMute();
+  this.ui.btnToggleInsp.onclick=()=>this.togglePanelView('Insp');
+  this.ui.btnToggleLyr.onclick=()=>this.togglePanelView('Lyr');
   this.ui.playbackRate.onchange=e=>{this.playbackRate=+e.target.value;this.audioElement.playbackRate=this.playbackRate};
   this.ui.btnExportPreviewClose.onclick=()=>this.ui.exportPreviewModal.classList.add('hidden');
   this.ui.btnExportPreviewCopy.onclick=()=>{navigator.clipboard?.writeText(this.ui.exportPreviewText.value);this.ui.btnExportPreviewCopy.textContent='✓ Copied';setTimeout(()=>{this.ui.btnExportPreviewCopy.textContent='📋 Copy'},1500)};
@@ -4035,7 +4039,26 @@ updateSaveStatus(msg,isDirty){
 },
 
 /* ─── ui prefs ───────────────────────────────────────────────────── */
-_uiPrefFields:['zoom','verticalZoom','autoScroll','volume','muted','autosaveEnabled','autosaveIntervalSec','snapStep','playbackRate'],
+_uiPrefFields:['zoom','verticalZoom','autoScroll','volume','muted','autosaveEnabled','autosaveIntervalSec','snapStep','playbackRate','viewInsp','viewLyr'],
+
+togglePanelView(panel){
+  this['view'+panel] = !this['view'+panel];
+  this.applyViewPanels();
+  this.persistUiPrefs();
+},
+
+applyViewPanels(){
+  this.ui.btnToggleInsp.classList.toggle('active-view', this.viewInsp);
+  this.ui.btnToggleLyr.classList.toggle('active-view', this.viewLyr);
+  this.ui.inspectorPanel.style.display = this.viewInsp ? 'flex' : 'none';
+  this.ui.previewPanel.style.display = this.viewLyr ? 'flex' : 'none';
+  this.ui.previewResizer.style.display = (this.viewInsp && this.viewLyr) ? 'block' : 'none';
+
+  const anyVis = this.viewInsp || this.viewLyr;
+  this.ui.sidebar.style.display = anyVis ? 'flex' : 'none';
+  this.ui.sidebarResizer.style.display = anyVis ? 'block' : 'none';
+  setTimeout(()=>this.renderRuler(), 50);
+},
 
 _syncUiToDOM(){
   this.ui.zoomSlider.value=this.zoom;
@@ -4046,6 +4069,9 @@ _syncUiToDOM(){
   this.ui.snapSelect.value=this.snapStep==='items'?'items':this.snapStep;
   this.ui.playbackRate.value=this.playbackRate;this.audioElement.playbackRate=this.playbackRate;
   this.applyVol();this.updateVolumeReadout();this.updateZoomReadout();this.updateVZoomReadout();
+  if(this.viewInsp===undefined)this.viewInsp=true;
+  if(this.viewLyr===undefined)this.viewLyr=true;
+  this.applyViewPanels();
 },
 
 persistUiPrefs(){
