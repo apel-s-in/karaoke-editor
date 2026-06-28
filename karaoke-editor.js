@@ -625,7 +625,11 @@ _restoreLayoutPrefs(){
           pEl.classList.toggle('panel-free', st.f);
           const btn = pEl.querySelector('.panel-magnet');
           if(btn) btn.classList.toggle('active', !st.f);
-          if(st.f){ pEl.style.width = st.w||''; pEl.style.height = st.h||''; }
+          if(st.f){ 
+            pEl.style.width = st.w||''; 
+            pEl.style.height = st.h||''; 
+            pEl.style.flex = 'none'; 
+          }
         });
       }
     }
